@@ -1,0 +1,534 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+/* =========================
+STARTERS PAGE CSS
+========================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.starters-page {
+    display: flex;
+    min-height: 100vh;
+    color: white;
+
+    font-family: "Playfair Display", serif;
+
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* =========================
+SIDEBAR
+========================= */
+
+.starters-sidebar {
+    width: 220px;
+
+    position: fixed;
+    left: 0;
+    top: 0;
+
+    height: 100vh;
+
+    background: rgba(0, 0, 0, .92);
+
+    backdrop-filter: blur(12px);
+
+    border-right: 1px solid rgba(255, 179, 71, .2);
+
+    padding: 20px;
+
+    overflow-y: auto;
+
+    z-index: 1000;
+}
+
+.starters-logo {
+    width: 200px;
+    display: block;
+    margin: 10px auto 30px;
+}
+
+.starters-sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.starters-menu-active,
+.starters-menu-item {
+    padding: 18px;
+
+    border-radius: 18px;
+
+    font-size: 18px;
+    font-weight: 700;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    cursor: pointer;
+
+    transition: .3s;
+}
+
+.starters-menu-active {
+    background:
+        linear-gradient(135deg,
+            #8b5a00,
+            #d88a1d,
+            #ffb347);
+
+    color: #111;
+
+    border: 1px solid #ffd27a;
+
+    font-family: "Cinzel", serif;
+
+    font-weight: 800;
+
+    box-shadow:
+        0 0 20px rgba(255, 179, 71, .4),
+        0 0 40px rgba(255, 179, 71, .15);
+}
+
+.starters-menu-item {
+    background:
+        linear-gradient(145deg,
+            rgba(22, 22, 22, .95),
+            rgba(8, 8, 8, .95));
+
+    border: 1px solid rgba(255, 179, 71, .15);
+
+    color: #e7e7e7;
+}
+
+.starters-menu-item:hover {
+    border-color: #ffb347;
+
+    box-shadow:
+        0 0 18px rgba(255, 179, 71, .15);
+}
+
+/* =========================
+MAIN CONTENT
+========================= */
+
+.starters-content {
+    flex: 1;
+
+    margin-left: 220px;
+
+    padding: 35px;
+
+    background:
+        linear-gradient(rgba(0, 0, 0, .45),
+            rgba(0, 0, 0, .55));
+}
+
+/* =========================
+TOP BAR
+========================= */
+
+.starters-topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+
+    gap: 22px;
+
+    margin-bottom: 35px;
+}
+
+.starters-customer-btn {
+    height: 60px;
+    min-width: 190px;
+
+    border-radius: 50px;
+
+    background:
+        linear-gradient(145deg,
+            rgba(25, 25, 25, .98),
+            rgba(8, 8, 8, .98));
+
+    color: #ffffff;
+
+    border: 1px solid rgba(255, 179, 71, .3);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    font-family: "Cinzel", serif;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: .35s ease;
+}
+
+.starters-customer-btn:hover {
+    transform: translateY(-3px);
+
+    border-color: #ffb347;
+
+    box-shadow:
+        0 0 25px rgba(255, 179, 71, .25);
+}
+
+.starters-cart-btn {
+    height: 60px;
+    min-width: 210px;
+
+    border-radius: 50px;
+
+    background:
+        linear-gradient(135deg,
+            #8b5a00,
+            #d88a1d,
+            #ffb347);
+
+    color: #111;
+
+    border: 1px solid #ffd27a;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    font-family: "Cinzel", serif;
+
+    font-size: 16px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition: .35s ease;
+
+    box-shadow:
+        0 0 20px rgba(255, 179, 71, .35);
+}
+
+.starters-cart-btn:hover {
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 0 35px rgba(255, 179, 71, .55);
+}
+
+/* =========================
+TITLE
+========================= */
+
+.main-title {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.main-title h1 {
+    font-family: "Cinzel", serif;
+
+    font-size: 110px;
+
+    font-weight: 900;
+
+    letter-spacing: 5px;
+
+    text-transform: uppercase;
+
+    color: white;
+
+    text-shadow:
+        0 0 10px rgba(255, 255, 255, .3),
+        0 0 25px rgba(255, 179, 71, .55),
+        0 0 50px rgba(255, 179, 71, .75);
+}
+
+.main-title h1 span {
+    color: #ffb347;
+}
+
+.main-title p {
+    margin-top: 15px;
+
+    color: #f5d7a1;
+
+    font-size: 24px;
+}
+
+/* =========================
+CATEGORY
+========================= */
+
+.category-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    padding: 25px;
+
+    border-radius: 24px;
+
+    margin: 45px 0 25px;
+
+    backdrop-filter: blur(10px);
+}
+
+.veg {
+    background: rgba(0, 120, 40, .25);
+    border: 1px solid rgba(0, 255, 100, .3);
+}
+
+.nonveg {
+    background: rgba(120, 0, 0, .25);
+    border: 1px solid rgba(255, 0, 0, .25);
+}
+
+.category-icon {
+    font-size: 42px;
+}
+
+.category-card h2 {
+    font-size: 38px;
+}
+
+.category-card p {
+    margin-top: 5px;
+    color: #ddd;
+}
+
+/* =========================
+GRID
+========================= */
+
+.food-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+}
+
+.food-card {
+    background: rgba(0, 0, 0, .88);
+
+    border: 1px solid rgba(255, 179, 71, .22);
+
+    border-radius: 25px;
+
+    padding: 18px;
+
+    transition: .3s;
+}
+
+.food-card:hover {
+    transform: translateY(-6px);
+
+    box-shadow:
+        0 0 25px rgba(255, 179, 71, .25);
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dish-code {
+    background: #ffb347;
+
+    color: #111;
+
+    padding: 7px 14px;
+
+    border-radius: 10px;
+
+    font-weight: 700;
+}
+
+.food-image {
+    width: 100%;
+    height: 210px;
+    object-fit: contain;
+}
+
+.dish-name {
+    margin-top: 10px;
+
+    font-size: 22px;
+
+    min-height: 55px;
+}
+
+.dish-price {
+    margin-top: 15px;
+
+    color: #ffb347;
+
+    font-size: 34px;
+
+    font-weight: 800;
+}
+
+/* VEG / NON VEG */
+
+.veg-box,
+.nonveg-box {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.veg-box {
+    border: 2px solid #00ff66;
+}
+
+.nonveg-box {
+    border: 2px solid red;
+}
+
+.veg-dot,
+.nonveg-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.veg-dot {
+    background: #00ff66;
+}
+
+.nonveg-dot {
+    background: red;
+}
+
+/* ADD TO CART */
+
+.add-cart-btn {
+    width: 100%;
+
+    margin-top: 18px;
+
+    padding: 14px;
+
+    border: none;
+
+    border-radius: 14px;
+
+    background:
+        linear-gradient(135deg,
+            #d88a1d,
+            #ffb347);
+
+    color: #111;
+
+    font-size: 16px;
+
+    font-weight: 800;
+
+    cursor: pointer;
+}
+
+.add-cart-btn:hover {
+    background:
+        linear-gradient(135deg,
+            #ffb347,
+            #ffd56a);
+}
+
+/* FEATURES */
+
+.features-section {
+    margin-top: 60px;
+
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 20px;
+}
+
+.feature-card {
+    background: rgba(0, 0, 0, .85);
+
+    border: 1px solid rgba(255, 179, 71, .2);
+
+    border-radius: 20px;
+
+    padding: 25px;
+
+    text-align: center;
+}
+
+.feature-card h3 {
+    margin-top: 12px;
+
+    font-size: 20px;
+}
+
+.feature-card p {
+    margin-top: 8px;
+
+    color: #bbb;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:1200px) {
+
+    .food-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+}
+
+@media(max-width:900px) {
+
+    .food-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .features-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .main-title h1 {
+        font-size: 70px;
+    }
+
+}
+
+@media(max-width:650px) {
+
+    .starters-sidebar {
+        display: none;
+    }
+
+    .starters-content {
+        margin-left: 0;
+    }
+
+    .food-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .features-section {
+        grid-template-columns: 1fr;
+    }
+
+    .main-title h1 {
+        font-size: 50px;
+    }
+
+}

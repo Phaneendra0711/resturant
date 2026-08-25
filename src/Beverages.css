@@ -1,0 +1,517 @@
+/* =========================
+   BEVERAGES PAGE CSS
+   Premium Cream Theme
+========================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.beverage-page {
+  display: flex;
+  min-height: 100vh;
+
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+
+  font-family: Georgia, serif;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.beverage-sidebar {
+  width: 220px;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+
+  height: 100vh;
+
+  background:
+    linear-gradient(180deg,
+      #0c2b03,
+      #082001,
+      #051500);
+
+  border-right: 1px solid rgba(125, 185, 40, .25);
+
+  padding: 20px;
+
+  z-index: 1000;
+
+  overflow-y: auto;
+}
+
+.beverage-logo {
+  width: 200px;
+  display: block;
+  margin: 15px auto 35px;
+}
+
+.beverage-sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.beverage-menu-active,
+.beverage-menu-item {
+  padding: 18px;
+
+  border-radius: 18px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: .3s;
+}
+
+.beverage-menu-active {
+  background:
+    linear-gradient(135deg,
+      #d98b17,
+      #f5b82e,
+      #ffd56a);
+
+  color: #111;
+
+  box-shadow:
+    0 0 20px rgba(245, 184, 46, .35);
+}
+
+.beverage-menu-item {
+  background:
+    rgba(255, 255, 255, .05);
+
+  color: white;
+
+  border: 1px solid rgba(255, 255, 255, .05);
+}
+
+.beverage-menu-item:hover {
+  border-color: #f5b82e;
+}
+
+/* =========================
+   MAIN
+========================= */
+
+.beverage-main {
+  flex: 1;
+
+  margin-left: 220px;
+
+  padding: 30px;
+}
+
+/* =========================
+   TOP BAR
+========================= */
+
+.beverage-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+
+  margin-bottom: 30px;
+}
+
+.beverage-top-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+.beverage-customer-btn {
+  height: 58px;
+  min-width: 180px;
+
+  border: none;
+  border-radius: 40px;
+
+  background: white;
+
+  border: 1px solid #d9ccb7;
+
+  color: #222;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  cursor: pointer;
+}
+
+.beverage-cart-btn {
+  height: 58px;
+  min-width: 210px;
+
+  border: none;
+  border-radius: 40px;
+
+  background:
+    linear-gradient(135deg,
+      #d98b17,
+      #f5b82e);
+
+  color: #111;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  cursor: pointer;
+}
+
+.beverage-cart-btn:hover {
+  box-shadow:
+    0 0 20px rgba(245, 184, 46, .4);
+}
+
+/* =========================
+   TITLE
+========================= */
+
+.beverage-home-btn {
+  height: 60px;
+  min-width: 170px;
+
+  border: none;
+
+  border-radius: 50px;
+
+  background:
+    linear-gradient(145deg,
+      rgba(25, 25, 25, .98),
+      rgba(8, 8, 8, .98));
+
+  color: #fff;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  border:
+    1px solid rgba(255, 179, 71, .3);
+
+  transition: .35s ease;
+}
+
+.beverage-home-btn:hover {
+  transform: translateY(-3px);
+
+  border-color: #ffb347;
+
+  box-shadow:
+    0 0 25px rgba(255, 179, 71, .25);
+}
+
+
+.beverage-title {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.beverage-title h1 {
+  font-size: 110px;
+
+  font-weight: 900;
+
+  letter-spacing: 4px;
+
+  text-transform: uppercase;
+
+  color: #2c1a07;
+
+  line-height: 1;
+}
+
+.beverage-title p {
+  margin-top: 18px;
+
+  font-size: 24px;
+
+  color: #5f5a50;
+}
+
+/* =========================
+   GRID
+========================= */
+
+.beverage-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, 1fr);
+
+  gap: 22px;
+}
+
+/* =========================
+   CARD
+========================= */
+
+.beverage-card {
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, .96),
+      rgba(248, 244, 236, .95));
+
+  border: 1px solid #ead7b3;
+
+  border-radius: 24px;
+
+  padding: 18px;
+
+  text-align: center;
+
+  transition: .3s;
+
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, .06);
+}
+
+.beverage-card:hover {
+  transform: translateY(-6px);
+
+  box-shadow:
+    0 18px 35px rgba(0, 0, 0, .12);
+}
+
+.beverage-code {
+  background: #2f7d12;
+
+  color: white;
+
+  width: max-content;
+
+  padding: 6px 12px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.beverage-image {
+  width: 100%;
+
+  height: 190px;
+
+  object-fit: contain;
+}
+
+.beverage-card h3 {
+  margin-top: 8px;
+
+  min-height: 50px;
+
+  font-size: 20px;
+
+  color: #2c1a07;
+
+  line-height: 1.4;
+}
+
+.beverage-price {
+  margin-top: 4px;
+
+  color: #d98100;
+
+  font-size: 38px;
+
+  font-weight: 800;
+}
+
+.beverage-add-btn {
+  width: 100%;
+
+  margin-top: 12px;
+
+  padding: 14px;
+
+  border: none;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(135deg,
+      #d98a00,
+      #ffbf2f);
+
+  color: #111;
+
+  font-size: 15px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  transition: .3s;
+}
+
+.beverage-add-btn:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 0 20px rgba(255, 191, 47, .35);
+}
+
+/* =========================
+   FEATURES
+========================= */
+
+.beverage-features {
+  margin-top: 50px;
+
+  background:
+    rgba(255, 255, 255, .92);
+
+  border: 1px solid #e5d6bd;
+
+  border-radius: 24px;
+
+  padding: 30px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 20px;
+}
+
+.beverage-feature {
+  text-align: center;
+
+  color: #222;
+
+  font-size: 32px;
+}
+
+.beverage-feature h3 {
+  margin-top: 10px;
+
+  font-size: 18px;
+}
+
+.beverage-feature p {
+  margin-top: 8px;
+
+  color: #666;
+
+  font-size: 14px;
+}
+
+/* =========================
+   EMPTY
+========================= */
+
+.beverage-empty {
+  grid-column: 1/-1;
+
+  text-align: center;
+
+  padding: 60px;
+
+  font-size: 24px;
+
+  color: #333;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:1400px) {
+
+  .beverage-grid {
+    grid-template-columns:
+      repeat(4, 1fr);
+  }
+
+}
+
+@media(max-width:1100px) {
+
+  .beverage-grid {
+    grid-template-columns:
+      repeat(3, 1fr);
+  }
+
+  .beverage-title h1 {
+    font-size: 80px;
+  }
+
+}
+
+@media(max-width:900px) {
+
+  .beverage-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .beverage-features {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .beverage-title h1 {
+    font-size: 60px;
+  }
+
+}
+
+@media(max-width:650px) {
+
+  .beverage-sidebar {
+    display: none;
+  }
+
+  .beverage-main {
+    margin-left: 0;
+  }
+
+  .beverage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beverage-features {
+    grid-template-columns: 1fr;
+  }
+
+  .beverage-title h1 {
+    font-size: 45px;
+  }
+
+}

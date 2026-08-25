@@ -1,0 +1,450 @@
+/* =========================================
+   PREMIUM SALADS PAGE CSS
+========================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.salad-page {
+  display: flex;
+  min-height: 100vh;
+  font-family: Georgia, serif;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #222;
+}
+
+/* =========================================
+   SIDEBAR
+========================================= */
+
+.salad-sidebar {
+  width: 220px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+
+  background:
+    linear-gradient(180deg,
+      #f8f7f1,
+      #f1efe7);
+
+  border-right: 1px solid #d9d0b8;
+  padding: 15px;
+  z-index: 100;
+}
+
+.salad-logo {
+  width: 200px;
+  display: block;
+  margin: auto;
+}
+
+.salad-sidebar-menu {
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.salad-menu-active,
+.salad-menu-item {
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0 18px;
+
+  border-radius: 16px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.salad-menu-active {
+  background:
+    linear-gradient(135deg,
+      #2f6f00,
+      #5ba300);
+
+  color: white;
+
+  box-shadow:
+    0 10px 20px rgba(60, 120, 0, .2);
+}
+
+.salad-menu-item {
+  background: white;
+  color: #222;
+  border: 1px solid #e2dbc8;
+}
+
+/* =========================================
+   MAIN
+========================================= */
+
+.salad-main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+  padding: 25px;
+}
+
+/* =========================================
+   TOPBAR
+========================================= */
+.salad-home-btn {
+  height: 60px;
+  min-width: 170px;
+
+  border: none;
+
+  border-radius: 50px;
+
+  background:
+    linear-gradient(145deg,
+      rgba(25, 25, 25, .98),
+      rgba(8, 8, 8, .98));
+
+  color: #fff;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  border:
+    1px solid rgba(255, 179, 71, .3);
+
+  transition: .35s ease;
+}
+
+.salad-home-btn:hover {
+  transform: translateY(-3px);
+
+  border-color: #ffb347;
+
+  box-shadow:
+    0 0 25px rgba(255, 179, 71, .25);
+}
+
+.salad-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.salad-top-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+.salad-customer-btn {
+  height: 58px;
+  padding: 0 28px;
+
+  border-radius: 18px;
+
+  border: 1px solid #d6ceb8;
+
+  background: white;
+
+  color: #222;
+
+  font-size: 18px;
+  font-weight: 700;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  cursor: pointer;
+}
+
+.salad-cart-btn {
+  height: 58px;
+  padding: 0 30px;
+
+  border: none;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(135deg,
+      #8ac700,
+      #d5ea6d);
+
+  color: #183000;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  cursor: pointer;
+}
+
+/* =========================================
+   TITLE
+========================================= */
+
+.salad-title {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.salad-title h1 {
+  font-size: 110px;
+  line-height: 1;
+
+  font-weight: 900;
+
+  text-transform: uppercase;
+
+  color: #235300;
+
+  letter-spacing: 3px;
+}
+
+.salad-title span {
+  color: #89c400;
+}
+
+.salad-title p {
+  margin-top: 12px;
+
+  font-size: 28px;
+
+  color: #4f5f38;
+}
+
+/* =========================================
+   GRID
+========================================= */
+
+.salad-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+
+/* =========================================
+   CARD
+========================================= */
+
+.salad-card {
+  background:
+    rgba(255, 255, 255, .92);
+
+  border: 1px solid #d9d0b8;
+
+  border-radius: 22px;
+
+  padding: 16px;
+
+  transition: .3s;
+}
+
+.salad-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 15px 30px rgba(0, 0, 0, .08);
+}
+
+.salad-code {
+  width: max-content;
+
+  padding: 6px 12px;
+
+  border-radius: 10px;
+
+  background: #2f7c00;
+
+  color: white;
+
+  font-weight: 700;
+}
+
+.salad-image {
+  width: 100%;
+  height: 200px;
+  object-fit: contain;
+}
+
+.salad-card h3 {
+  text-align: center;
+
+  color: #222;
+
+  font-size: 18px;
+
+  min-height: 55px;
+}
+
+.salad-price {
+  text-align: center;
+
+  color: #2f7c00;
+
+  font-size: 40px;
+
+  font-weight: 800;
+
+  margin-top: 8px;
+}
+
+.salad-add-btn {
+  width: 100%;
+
+  margin-top: 15px;
+
+  height: 52px;
+
+  border: none;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(135deg,
+      #2f7c00,
+      #54a800);
+
+  color: white;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  cursor: pointer;
+}
+
+.salad-add-btn:hover {
+  opacity: .95;
+}
+
+/* =========================================
+   FEATURES
+========================================= */
+
+.salad-features {
+  margin-top: 40px;
+
+  background: white;
+
+  border: 1px solid #d9d0b8;
+
+  border-radius: 22px;
+
+  padding: 25px;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.salad-feature {
+  text-align: center;
+  font-size: 34px;
+}
+
+.salad-feature h3 {
+  margin-top: 10px;
+
+  font-size: 20px;
+
+  color: #235300;
+}
+
+.salad-feature p {
+  margin-top: 5px;
+
+  color: #666;
+}
+
+/* =========================================
+   EMPTY
+========================================= */
+
+.salad-empty {
+  grid-column: 1/-1;
+
+  text-align: center;
+
+  font-size: 24px;
+
+  padding: 50px;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media(max-width:1400px) {
+
+  .salad-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+}
+
+@media(max-width:1200px) {
+
+  .salad-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+}
+
+@media(max-width:900px) {
+
+  .salad-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .salad-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .salad-title h1 {
+    font-size: 70px;
+  }
+
+}
+
+@media(max-width:650px) {
+
+  .salad-sidebar {
+    display: none;
+  }
+
+  .salad-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .salad-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .salad-features {
+    grid-template-columns: 1fr;
+  }
+
+  .salad-title h1 {
+    font-size: 50px;
+  }
+
+}
