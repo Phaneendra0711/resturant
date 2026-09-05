@@ -72,6 +72,7 @@ export default function Desserts() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Desserts",
           image: item.image,
           price: item.price,
           qty: 1,

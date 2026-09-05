@@ -72,6 +72,7 @@ export default function MainCourse() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Main Course",
           image: item.image,
           price: item.price,
           qty: 1,

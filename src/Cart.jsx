@@ -24,6 +24,7 @@ export default function Cart() {
 
   const [cartItems, setCartItems] =
     useState([]);
+  const [customerName, setCustomerName] = useState("");
 
   useEffect(() => {
     const savedCart =
@@ -108,16 +109,23 @@ export default function Cart() {
     serviceCharge;
 
   const handlePlaceOrder = async () => {
+    const trimmedName = customerName.trim();
+
+  if (!trimmedName) {
+      alert("Please enter your name before placing the order.");
+      return;
+  }
     if (cartItems.length === 0) {
       alert("Cart is empty");
       return;
     }
 
     const orderData = {
-      customerName: "Customer",
+      customerName: customerName.trim(),
 
       items: cartItems.map((item) => ({
         name: item.name,
+        category: item.category || "",
         price: item.price,
         quantity: item.qty,
         image: item.image || "",
@@ -484,7 +492,44 @@ export default function Cart() {
                 ₹{total}
               </span>
             </div>
+            <div
+  style={{
+    marginTop: "25px",
+    marginBottom: "20px",
+  }}
+>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "8px",
+      fontWeight: "700",
+      letterSpacing: "0.5px",
+    }}
+  >
+    CUSTOMER NAME
+  </label>
 
+  <input
+    type="text"
+    value={customerName}
+    onChange={(e) =>
+      setCustomerName(e.target.value)
+    }
+    placeholder="Enter your name"
+    maxLength={50}
+    style={{
+      width: "100%",
+      padding: "13px 15px",
+      borderRadius: "10px",
+      border: "1px solid rgba(216,154,43,.6)",
+      background: "rgba(0,0,0,.35)",
+      color: "#fff",
+      fontSize: "15px",
+      outline: "none",
+      boxSizing: "border-box",
+    }}
+  />
+</div>
             <button
               className="checkout-btn"
               onClick={handlePlaceOrder}

@@ -7,6 +7,11 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
     },
 
+    category: {
+      type: String,
+      default: "",
+    },
+
     price: {
       type: Number,
       required: true,
@@ -26,25 +31,65 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const orderSchema = new mongoose.Schema(
+const staffAssignmentSchema = new mongoose.Schema(
   {
-    // =========================
-    // CUSTOMER INFORMATION
-    // =========================
-
-    customerName: {
-      type: String,
-      default: "Customer",
-    },
-
-    tableNumber: {
+    staffId: {
       type: String,
       default: "",
     },
 
-    // =========================
-    // ORDER ITEMS
-    // =========================
+    name: {
+      type: String,
+      default: "",
+    },
+
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
+
+    readyAt: {
+      type: Date,
+      default: null,
+    },
+
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    servedAt: {
+      type: Date,
+      default: null,
+    },
+
+    targetMinutes: {
+      type: Number,
+      default: 15,
+    },
+
+    performance: {
+      type: String,
+      enum: [
+        "FAST",
+        "PERFECT",
+        "SLOW",
+        "OUT_OF_TIME",
+        "",
+      ],
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
+const orderSchema = new mongoose.Schema(
+  {
+    customerName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
     items: {
       type: [orderItemSchema],
@@ -56,10 +101,6 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-
-    // =========================
-    // ORDER STATUS
-    // =========================
 
     status: {
       type: String,
@@ -73,57 +114,15 @@ const orderSchema = new mongoose.Schema(
       default: "NEW",
     },
 
-    // =========================
-    // STAFF INFORMATION
-    // =========================
-
     chef: {
-      staffId: {
-        type: String,
-        default: "",
-      },
-
-      name: {
-        type: String,
-        default: "",
-      },
-
-      acceptedAt: {
-        type: Date,
-        default: null,
-      },
-
-      readyAt: {
-        type: Date,
-        default: null,
-      },
+      type: staffAssignmentSchema,
+      default: () => ({}),
     },
 
     waiter: {
-      staffId: {
-        type: String,
-        default: "",
-      },
-
-      name: {
-        type: String,
-        default: "",
-      },
-
-      assignedAt: {
-        type: Date,
-        default: null,
-      },
-
-      servedAt: {
-        type: Date,
-        default: null,
-      },
+      type: staffAssignmentSchema,
+      default: () => ({}),
     },
-
-    // =========================
-    // PAYMENT INFORMATION
-    // =========================
 
     paymentStatus: {
       type: String,
@@ -156,19 +155,13 @@ const orderSchema = new mongoose.Schema(
       default: null,
     },
 
-    // =========================
-    // IMPORTANT TIMESTAMPS
-    // =========================
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
+    tableNumber: {
+      type: String,
+      default: "",
     },
-
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
+  },
+  {
+    timestamps: true,
   }
 );
 

@@ -76,6 +76,7 @@ export default function Burger() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Burger",
           image: item.image,
           price: item.price,
           qty: 1,

@@ -72,6 +72,7 @@ export default function IceCreams() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Ice Creams",
           image: item.image,
           price: item.price,
           qty: 1,

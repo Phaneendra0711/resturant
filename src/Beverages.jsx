@@ -69,6 +69,7 @@ export default function Beverages() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || "Beverages",
           image: item.image,
           price: item.price,
           qty: 1,

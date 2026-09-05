@@ -8,6 +8,36 @@ export default function Landing() {
   return (
     <div className="landing-page">
 
+<button
+  onClick={() => navigate("/staff-login")}
+  style={{
+    position: "fixed",
+    top: "25px",
+    right: "30px",
+    zIndex: 1000,
+
+    background:
+      "linear-gradient(135deg, #f5b942, #d88916)",
+    color: "#111",
+
+    border: "none",
+    padding: "15px 32px",
+    borderRadius: "12px",
+
+    cursor: "pointer",
+    fontWeight: "800",
+    fontSize: "15px",
+    letterSpacing: "1px",
+
+    boxShadow:
+      "0 5px 20px rgba(216,154,43,.4)",
+
+    transition: "all 0.2s ease",
+  }}
+>
+  STAFF PORTAL
+</button>
+
       <div className="landing-glow"></div>
 
       <div className="landing-content">

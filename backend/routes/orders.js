@@ -63,18 +63,22 @@ router.post("/", async (req, res) => {
       // =========================
 
       chef: {
-        staffId: "",
-        name: "",
-        acceptedAt: null,
-        readyAt: null,
-      },
+  staffId: "",
+  name: "",
+  acceptedAt: null,
+  readyAt: null,
+  targetMinutes: 15,
+  performance: "",
+},
 
-      waiter: {
-        staffId: "",
-        name: "",
-        assignedAt: null,
-        servedAt: null,
-      },
+waiter: {
+  staffId: "",
+  name: "",
+  assignedAt: null,
+  servedAt: null,
+  targetMinutes: 15,
+  performance: "",
+},
     });
 
     console.log("ORDER CREATED:", order);

@@ -265,45 +265,9 @@ export default function Home() {
               VIEW
             </span>
           </div>
-
-          <button
-            onClick={() =>
-              navigate("/staff-login")
-            }
-            style={{
-              background:
-                "linear-gradient(135deg,#8a5a08,#c98a20,#f0c35a)",
-              color: "#111",
-              border: "1px solid rgba(255,215,120,.5)",
-              padding: "16px 32px",
-              borderRadius: "18px",
-              cursor: "pointer",
-              fontWeight: "800",
-              fontSize: "15px",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              boxShadow:
-                "0 0 15px rgba(216,154,43,.25), 0 0 35px rgba(216,154,43,.15)",
-              transition: "all .3s ease",
-              backdropFilter: "blur(10px)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform =
-                "translateY(-3px)";
-              e.currentTarget.style.boxShadow =
-                "0 0 25px rgba(216,154,43,.45), 0 0 50px rgba(216,154,43,.25)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform =
-                "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 0 15px rgba(216,154,43,.25), 0 0 35px rgba(216,154,43,.15)";
-            }}
-          >
-            STAFF PORTAL
-          </button>
         </div>
       </div>
+    
 
       {/* HERO SECTION */}
 

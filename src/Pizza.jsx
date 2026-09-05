@@ -69,6 +69,7 @@ export default function Pizza() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Pizza",
           image: item.image,
           price: item.price,
           qty: 1,

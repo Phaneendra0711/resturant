@@ -88,6 +88,7 @@ export default function Starters() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Starters",
           image: item.image,
           price: item.price,
           qty: 1,

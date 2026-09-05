@@ -69,6 +69,7 @@ export default function Salads() {
         {
           id: item.id,
           name: item.name,
+          category: item.category || item.section || "Salads",
           image: item.image,
           price: item.price,
           qty: 1,
