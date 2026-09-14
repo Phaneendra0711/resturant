@@ -50,6 +50,12 @@ export default function Chef() {
   const [activeTab, setActiveTab] =
     useState("NEW");
 
+  const currentStaffId =
+    localStorage.getItem("staffId");
+
+  const currentStaffName =
+    localStorage.getItem("staffName");
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -65,7 +71,34 @@ export default function Chef() {
           );
         }
 
-        setOrders(data.orders || []);
+        const fetchedOrders = data.orders || [];
+
+        /*
+          FIFO:
+          Oldest order first
+          Newest order last
+        */
+        const sortedOrders = [...fetchedOrders].sort(
+          (a, b) => {
+            const timeA = new Date(
+              a.createdAt
+            ).getTime();
+
+            const timeB = new Date(
+              b.createdAt
+            ).getTime();
+
+            if (timeA !== timeB) {
+              return timeA - timeB;
+            }
+
+            return String(a._id).localeCompare(
+              String(b._id)
+            );
+          }
+        );
+
+        setOrders(sortedOrders);
       } catch (error) {
         console.error(
           "Failed to load orders:",
@@ -128,6 +161,7 @@ export default function Chef() {
       );
 
       alert(
+        error.message ||
         "Unable to accept order"
       );
     }
@@ -187,68 +221,169 @@ export default function Chef() {
   const preparingCount =
     orders.filter(
       (o) =>
-        o.status ===
-        "PREPARING"
+        o.status === "PREPARING" &&
+        String(
+          o.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
     ).length;
 
   const readyCount =
     orders.filter(
       (o) =>
-        o.status ===
-        "READY"
+        o.status === "READY" &&
+        String(
+          o.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
     ).length;
 
   const completedCount =
     orders.filter(
       (o) =>
-        o.status ===
-        "SERVED"
+        o.status === "SERVED" &&
+        String(
+          o.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
     ).length;
 
-  const filteredOrders =
-    orders.filter((order) => {
+  /*
+    ==========================================
+    NEW ORDERS
+    ==========================================
+  
+    Shared FIFO queue.
+  
+    All chefs see the same NEW orders.
+  
+    Only the oldest 5 are eligible to accept.
+  */
 
-      if (
-        activeTab === "NEW"
-      ) {
-        return (
-          order.status ===
-          "NEW"
-        );
+  const newOrders = orders
+    .filter(
+      (order) =>
+        order.status === "NEW"
+    )
+    .sort((a, b) => {
+      const timeA = new Date(
+        a.createdAt
+      ).getTime();
+
+      const timeB = new Date(
+        b.createdAt
+      ).getTime();
+
+      if (timeA !== timeB) {
+        return timeA - timeB;
       }
 
-      if (
-        activeTab ===
-        "PREPARING"
-      ) {
-        return (
-          order.status ===
-          "PREPARING"
-        );
-      }
-
-      if (
-        activeTab ===
-        "READY"
-      ) {
-        return (
-          order.status ===
-          "READY"
-        );
-      }
-
-      if (
-        activeTab ===
-        "COMPLETED"
-      ) {
-        return (
-          order.status ===
-          "SERVED"
-        );
-      }
-
-      return true;
+      return String(a._id).localeCompare(
+        String(b._id)
+      );
     });
+
+
+  /*
+    ==========================================
+    CHEF'S OWN PREPARING ORDERS
+    ==========================================
+  */
+
+  const myPreparingOrders =
+    orders.filter(
+      (order) =>
+        order.status ===
+        "PREPARING" &&
+        String(
+          order.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
+    );
+
+
+  /*
+    ==========================================
+    CHEF'S OWN READY ORDERS
+    ==========================================
+  */
+
+  const myReadyOrders =
+    orders.filter(
+      (order) =>
+        order.status ===
+        "READY" &&
+        String(
+          order.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
+    );
+
+
+  /*
+    ==========================================
+    CHEF'S OWN COMPLETED ORDERS
+    ==========================================
+  */
+
+  const myCompletedOrders =
+    orders.filter(
+      (order) =>
+        order.status ===
+        "SERVED" &&
+        String(
+          order.chef?.staffId || ""
+        ) === String(
+          currentStaffId || ""
+        )
+    );
+
+
+  /*
+    ==========================================
+    FIFO TOP 5
+    ==========================================
+  */
+
+  const fifoOrders =
+    newOrders.slice(0, 5);
+
+
+  /*
+    ==========================================
+    CURRENT TAB
+    ==========================================
+  */
+
+  let filteredOrders = [];
+
+  if (activeTab === "NEW") {
+    filteredOrders = newOrders;
+  }
+
+  if (
+    activeTab === "PREPARING"
+  ) {
+    filteredOrders =
+      myPreparingOrders;
+  }
+
+  if (activeTab === "READY") {
+    filteredOrders =
+      myReadyOrders;
+  }
+
+  if (
+    activeTab === "COMPLETED"
+  ) {
+    filteredOrders =
+      myCompletedOrders;
+  }
 
   return (
 
@@ -397,7 +532,7 @@ export default function Chef() {
             <div>
 
               <h3>
-                Head Chef
+                {currentStaffName || "Chef"}
               </h3>
 
               <p>
@@ -430,7 +565,7 @@ export default function Chef() {
           <div>
 
             <h3 className="chef-welcome">
-              Welcome Chef 👨‍🍳
+              Welcome {currentStaffName || "Chef"} 👨‍🍳
             </h3>
 
             <h1 className="chef-title">
@@ -580,79 +715,297 @@ export default function Chef() {
                   className="chef-order-card"
                 >
 
+                  {/* ORDER INFORMATION */}
                   <div className="chef-order-info">
 
-                    <h2>
-                      ORDER #
-                      {order._id}
-                    </h2>
-
                     <h3>
-                      Status :
-                      {" "}
-                      {order.status}
+                      Status : {order.status}
                     </h3>
 
-                    <p>
-                      Ordered At :
-                      {" "}
-                      {order.createdAt}
-                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        flexWrap: "wrap",
+                        marginTop: "12px",
+                      }}
+                    >
+
+                      {/* ORDER TIME */}
+                      <div
+                        style={{
+                          padding: "9px 16px",
+                          borderRadius: "9px",
+                          background: "rgba(216,154,43,0.10)",
+                          border: "1px solid rgba(216,154,43,0.20)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "#999",
+                            fontSize: "11px",
+                            display: "block",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          ORDER TIME
+                        </span>
+
+                        <strong style={{ color: "#fff" }}>
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                            : "-"}
+                        </strong>
+                      </div>
+
+                      {/* TABLE */}
+                      <div
+                        style={{
+                          padding: "9px 16px",
+                          borderRadius: "9px",
+                          background: "rgba(216,154,43,0.10)",
+                          border: "1px solid rgba(216,154,43,0.20)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "#999",
+                            fontSize: "11px",
+                            display: "block",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          TABLE
+                        </span>
+
+                        <strong style={{ color: "#fff" }}>
+                          {order.tableNumber
+                            ? `Table ${order.tableNumber}`
+                            : "Not selected"}
+                        </strong>
+                      </div>
+
+                    </div>
 
                   </div>
 
+
+                  {/* ORDER ITEMS */}
                   <div className="chef-order-items">
 
                     <h4>
                       ORDER ITEMS
                     </h4>
 
-                    <ul>
+                    {order.items?.map((item, index) => (
+                      <div
+                        key={
+                          item._id ||
+                          `${order._id}-${index}`
+                        }
+                        style={{
+                          marginBottom: "18px",
+                          paddingBottom: "16px",
+                          borderBottom:
+                            index !== order.items.length - 1
+                              ? "1px solid rgba(255,255,255,0.08)"
+                              : "none",
+                        }}
+                      >
 
-                      {order.items?.map(
-                        (item) => (
+                        {/* CATEGORY */}
+                        <div
+                          style={{
+                            color: "#d89a2b",
+                            fontSize: "36px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.6px",
+                            marginBottom: "7px",
+                          }}
+                        >
+                          {item.category || "UNCATEGORIZED"}
+                        </div>
 
-                          <li
-                            key={item.id}
+                        {/* ITEM NAME */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "20px",
+                          }}
+                        >
+
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              flexWrap: "wrap",
+                            }}
                           >
-                            {item.name}
-                            {" "}
-                            ×
-                            {" "}
-                            {item.quantity}
-                            {" "}
-                            —
-                            {" "}
-                            ₹
-                            {item.price}
-                          </li>
 
-                        )
-                      )}
+                            <span
+                              style={{
+                                color: "#fff",
+                                fontSize: "26px",
+                                fontWeight: "700",
+                                lineHeight: "1.3",
+                              }}
+                            >
+                              {item.name}
+                            </span>
 
-                    </ul>
+                            <span
+                              style={{
+                                color: "#aaa",
+                                fontSize: "16px",
+                                fontWeight: "600",
+                              }}
+                            >
+                              × {item.quantity}
+                            </span>
+
+                          </div>
+
+                          {/* PRICE */}
+                          <span
+                            style={{
+                              color: "#fff",
+                              fontSize: "17px",
+                              fontWeight: "700",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ₹{item.price}
+                          </span>
+
+                        </div>
+
+                      </div>
+                    ))}
 
                   </div>
 
+
+                  {/* DESCRIPTION TO CHEF */}
+                  {order.chefDescription &&
+                    order.chefDescription.trim() !== "" && (
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          marginBottom: "18px",
+                          padding: "16px 18px",
+                          borderRadius: "12px",
+                          background: "rgba(216,154,43,0.08)",
+                          border: "1px solid rgba(216,154,43,0.25)",
+                        }}
+                      >
+
+                        <div
+                          style={{
+                            color: "#d89a2b",
+                            fontSize: "13px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            marginBottom: "8px",
+                          }}
+                        >
+                          👨‍🍳 DESCRIPTION TO CHEF
+                        </div>
+
+                        <div
+                          style={{
+                            color: "#eee",
+                            fontSize: "15px",
+                            lineHeight: "1.6",
+                          }}
+                        >
+                          {order.chefDescription}
+                        </div>
+
+                      </div>
+                    )}
+
+
+                  {/* ESTIMATED TIME */}
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "9px 15px",
+                      borderRadius: "20px",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#ddd",
+                      marginBottom: "18px",
+                    }}
+                  >
+                    <FaClock />
+
+                    <span>
+                      Estimated Time:
+                    </span>
+
+                    <strong
+                      style={{
+                        color: "#d89a2b",
+                      }}
+                    >
+                      {order.chef?.targetMinutes || 15} MIN
+                    </strong>
+                  </div>
                   <div className="chef-order-actions">
 
-                    {order.status ===
-                      "NEW" && (
-
-                        <button
-                          className="accept-btn"
-                          onClick={() =>
-                            acceptOrder(
+                    {order.status === "NEW" && (
+                      (() => {
+                        const fifoIndex =
+                          fifoOrders.findIndex(
+                            (fifoOrder) =>
+                              fifoOrder._id ===
                               order._id
-                            )
-                          }
-                        >
-                          <FaCheck />
-                          &nbsp;
-                          ACCEPT ORDER
-                        </button>
+                          );
 
-                      )}
+                        const isFifoEligible =
+                          fifoIndex !== -1;
+
+                        const hasReachedLimit =
+                          preparingCount >= 2;
+
+                        return isFifoEligible &&
+                          !hasReachedLimit ? (
+                          <button
+                            className="accept-btn"
+                            onClick={() =>
+                              acceptOrder(order._id)
+                            }
+                          >
+                            <FaCheck />
+                            &nbsp;
+                            ACCEPT ORDER
+                          </button>
+                        ) : (
+                          <button
+                            className="accept-btn"
+                            disabled
+                            style={{
+                              opacity: 0.45,
+                              cursor: "not-allowed",
+                            }}
+                          >
+                            <FaClock />
+                            &nbsp;
+                            {hasReachedLimit
+                              ? "MAX 2 ORDERS ACTIVE"
+                              : "WAITING — FIFO QUEUE"}
+                          </button>
+                        );
+                      })()
+                    )}
 
                     {order.status ===
                       "PREPARING" && (

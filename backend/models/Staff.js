@@ -31,6 +31,15 @@ const staffSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // ==========================================
+    // WAITER CURRENT TASK
+    // ==========================================
+    waiterTask: {
+      type: String,
+      enum: ["", "ORDER", "ASSISTANCE"],
+      default: "",
+    },
   },
   {
     timestamps: true,

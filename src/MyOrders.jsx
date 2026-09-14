@@ -88,21 +88,32 @@ export default function MyOrders() {
           )
         );
 
-      setOrders(
-        updatedOrders
-      );
+// ==========================================
+// SORT ORDERS
+// OLDEST → NEWEST
+// NEWEST ORDER WILL BE AT THE BOTTOM
+// ==========================================
 
-      /*
-        Keep the refreshed
-        versions locally.
-      */
+const sortedOrders = [...updatedOrders].sort(
+  (a, b) => {
+    const idA = String(a?._id || "");
+    const idB = String(b?._id || "");
 
-      localStorage.setItem(
-        "orders",
-        JSON.stringify(
-          updatedOrders
-        )
-      );
+    return idB.localeCompare(idA);
+  }
+);
+
+console.log(
+  "ORDER DISPLAY ORDER:",
+  sortedOrders.map((order, index) => ({
+    position: index + 1,
+    id: order._id,
+    customer: order.customerName,
+    createdAt: order.createdAt,
+  }))
+);
+
+setOrders(sortedOrders);
     } catch (error) {
       console.error(
         "Failed to load orders:",
@@ -661,12 +672,9 @@ export default function MyOrders() {
           ORDERS
       ====================================== */}
 
-      {!loading &&
-        orders.map(
-          (
-            order,
-            index
-          ) => (
+{!loading &&
+  orders.map(
+    (order, index) => (
             <div
               key={
                 order._id ||

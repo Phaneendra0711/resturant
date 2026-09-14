@@ -1,9 +1,0 @@
-node.js should be there.
-open folder in vs code and run "npm install".
-check .env file.
-run these following 2 commands in powershell:-
-1) New-NetFirewallRule -DisplayName "Restaurant Backend 5000" -Direction Inbound -Protocol TCP -LocalPort 5000 -Action Allow -Profile Any
-2) New-NetFirewallRule -DisplayName "Restaurant Frontend 5173" -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Any
-run this 2 command in different terminals 
-npm run server
-npm run dev

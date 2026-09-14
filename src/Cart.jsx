@@ -25,6 +25,10 @@ export default function Cart() {
   const [cartItems, setCartItems] =
     useState([]);
   const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [chefDescription, setChefDescription] = useState("");
+  const [waiterDescription, setWaiterDescription] = useState("");
 
   useEffect(() => {
     const savedCart =
@@ -111,10 +115,10 @@ export default function Cart() {
   const handlePlaceOrder = async () => {
     const trimmedName = customerName.trim();
 
-  if (!trimmedName) {
+    if (!trimmedName) {
       alert("Please enter your name before placing the order.");
       return;
-  }
+    }
     if (cartItems.length === 0) {
       alert("Cart is empty");
       return;
@@ -139,7 +143,10 @@ export default function Cart() {
       amountPaid: total,
       paidAt: new Date(),
 
-      tableNumber: "",
+      tableNumber: tableNumber,
+      couponCode: couponCode.trim(),
+      chefDescription: chefDescription.trim(),
+      waiterDescription: waiterDescription.trim(),
     };
 
     try {
@@ -493,43 +500,229 @@ export default function Cart() {
               </span>
             </div>
             <div
-  style={{
-    marginTop: "25px",
-    marginBottom: "20px",
-  }}
->
-  <label
-    style={{
-      display: "block",
-      marginBottom: "8px",
-      fontWeight: "700",
-      letterSpacing: "0.5px",
-    }}
-  >
-    CUSTOMER NAME
-  </label>
+              style={{
+                marginTop: "25px",
+                marginBottom: "20px",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                CUSTOMER NAME
+              </label>
 
-  <input
-    type="text"
-    value={customerName}
-    onChange={(e) =>
-      setCustomerName(e.target.value)
-    }
-    placeholder="Enter your name"
-    maxLength={50}
-    style={{
-      width: "100%",
-      padding: "13px 15px",
-      borderRadius: "10px",
-      border: "1px solid rgba(216,154,43,.6)",
-      background: "rgba(0,0,0,.35)",
-      color: "#fff",
-      fontSize: "15px",
-      outline: "none",
-      boxSizing: "border-box",
-    }}
-  />
-</div>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) =>
+                  setCustomerName(e.target.value)
+                }
+                placeholder="Enter your name"
+                maxLength={50}
+                style={{
+                  width: "100%",
+                  padding: "13px 15px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(216,154,43,.6)",
+                  background: "rgba(0,0,0,.35)",
+                  color: "#fff",
+                  fontSize: "15px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                marginBottom: "18px",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                TABLE NUMBER
+              </label>
+
+              <select
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "13px 15px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(216,154,43,.6)",
+                  background: "#111",
+                  color: tableNumber ? "#fff" : "#888",
+                  fontSize: "15px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">Select your table</option>
+
+                {Array.from({ length: 30 }, (_, index) => (
+                  <option
+                    key={index + 1}
+                    value={String(index + 1)}
+                  >
+                    Table {index + 1}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div
+              style={{
+                marginBottom: "18px",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                COUPON CODE{" "}
+                <span
+                  style={{
+                    color: "#777",
+                    fontWeight: "400",
+                  }}
+                >
+                  (OPTIONAL)
+                </span>
+              </label>
+
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) =>
+                  setCouponCode(e.target.value)
+                }
+                placeholder="Enter coupon code"
+                maxLength={30}
+                style={{
+                  width: "100%",
+                  padding: "13px 15px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(216,154,43,.6)",
+                  background: "rgba(0,0,0,.35)",
+                  color: "#fff",
+                  fontSize: "15px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                marginBottom: "18px",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                DESCRIPTION TO CHEF{" "}
+                <span
+                  style={{
+                    color: "#777",
+                    fontWeight: "400",
+                  }}
+                >
+                  (OPTIONAL)
+                </span>
+              </label>
+
+              <textarea
+                value={chefDescription}
+                onChange={(e) =>
+                  setChefDescription(e.target.value)
+                }
+                placeholder="Example: Less spicy, no onions, extra crispy..."
+                maxLength={250}
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "13px 15px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(216,154,43,.6)",
+                  background: "rgba(0,0,0,.35)",
+                  color: "#fff",
+                  fontSize: "15px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                marginBottom: "22px",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                DESCRIPTION TO WAITER{" "}
+                <span
+                  style={{
+                    color: "#777",
+                    fontWeight: "400",
+                  }}
+                >
+                  (OPTIONAL)
+                </span>
+              </label>
+
+              <textarea
+                value={waiterDescription}
+                onChange={(e) =>
+                  setWaiterDescription(e.target.value)
+                }
+                placeholder="Example: Bring extra plates, serve after 10 minutes..."
+                maxLength={250}
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "13px 15px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(216,154,43,.6)",
+                  background: "rgba(0,0,0,.35)",
+                  color: "#fff",
+                  fontSize: "15px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
             <button
               className="checkout-btn"
               onClick={handlePlaceOrder}
@@ -537,26 +730,6 @@ export default function Cart() {
               PROCEED TO BILLING
               <FaArrowRight />
             </button>
-            <button
-              onClick={() =>
-                navigate("/status")
-              }
-              style={{
-                width: "100%",
-                marginTop: "12px",
-                padding: "14px",
-                background: "transparent",
-                color: "#d89a2b",
-                border: "1px solid #d89a2b",
-                borderRadius: "10px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "15px",
-              }}
-            >
-              📦 TRACK MY ORDER
-            </button>
-
             <div className="payment-title">
               PAYMENT METHODS
             </div>

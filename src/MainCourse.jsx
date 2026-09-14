@@ -40,7 +40,6 @@ export default function MainCourse() {
   })();
 
   const categories = ["VEG", "NON VEG"];
-
   const addToCart = (item) => {
     const existingCart =
       JSON.parse(
@@ -72,7 +71,7 @@ export default function MainCourse() {
         {
           id: item.id,
           name: item.name,
-          category: item.category || item.section || "Main Course",
+          category: item.section || "MAIN COURSE",
           image: item.image,
           price: item.price,
           qty: 1,

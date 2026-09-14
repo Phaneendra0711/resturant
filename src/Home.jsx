@@ -20,12 +20,118 @@ import {
   FaReceipt,
   FaIceCream,
   FaBirthdayCake,
+  FaBell,
 } from "react-icons/fa";
 
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const navigate = useNavigate();
+
+  const [showWaiterModal, setShowWaiterModal] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [assistanceSubmitting, setAssistanceSubmitting] = useState(false);
+  const [assistanceMessage, setAssistanceMessage] = useState("");
+
+  const [waiterCooldownUntil, setWaiterCooldownUntil] = useState(() => {
+    const saved = localStorage.getItem("waiterCooldownUntil");
+    return saved ? Number(saved) : 0;
+  });
+
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  useEffect(() => {
+    const updateCooldown = () => {
+      const remaining = Math.max(
+        0,
+        waiterCooldownUntil - Date.now()
+      );
+
+      setCooldownRemaining(remaining);
+
+      if (remaining <= 0 && waiterCooldownUntil > 0) {
+        localStorage.removeItem("waiterCooldownUntil");
+        setWaiterCooldownUntil(0);
+      }
+    };
+
+    updateCooldown();
+
+    const timer = setInterval(updateCooldown, 1000);
+
+    return () => clearInterval(timer);
+  }, [waiterCooldownUntil]);
+
+  const requestWaiter = async () => {
+    if (waiterCooldownUntil > Date.now()) {
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setAssistanceMessage("Please enter your name.");
+      return;
+    }
+
+    if (!tableNumber) {
+      setAssistanceMessage("Please select your table number.");
+      return;
+    }
+
+    try {
+      setAssistanceSubmitting(true);
+      setAssistanceMessage("");
+
+      const response = await fetch("/api/assistance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          tableNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to request waiter"
+        );
+      }
+
+      setAssistanceMessage(
+        "Waiter has been notified. Please wait a moment."
+      );
+
+      const cooldownUntil =
+        Date.now() + 5 * 60 * 1000;
+
+      localStorage.setItem(
+        "waiterCooldownUntil",
+        String(cooldownUntil)
+      );
+
+      setWaiterCooldownUntil(cooldownUntil);
+
+      setTimeout(() => {
+        setShowWaiterModal(false);
+        setCustomerName("");
+        setTableNumber("");
+        setAssistanceMessage("");
+      }, 1800);
+    } catch (error) {
+      console.error("Waiter assistance error:", error);
+
+      setAssistanceMessage(
+        error.message || "Unable to request waiter."
+      );
+    } finally {
+      setAssistanceSubmitting(false);
+    }
+  };
 
   const categories = [
     {
@@ -206,34 +312,107 @@ export default function Home() {
             alignItems: "stretch",
           }}
         >
+          {/* TOP ROW - CALL WAITER + CART */}
+
           <div
-            onClick={() => navigate("/cart")}
             style={{
-              border:
-                "2px solid rgba(216,154,43,.8)",
-              borderRadius: "14px",
-              padding: "15px 25px",
               display: "flex",
               gap: "10px",
               alignItems: "center",
-              background:
-                "rgba(0,0,0,.45)",
-              cursor: "pointer",
             }}
           >
-            <FaShoppingCart />
 
-            <span>CART</span>
+            {/* CALL WAITER */}
 
-            <span
+            <button
+              onClick={() => {
+                if (waiterCooldownUntil > Date.now()) {
+                  return;
+                }
+
+                setShowWaiterModal(true);
+                setAssistanceMessage("");
+              }}
               style={{
-                color: "#d89a2b",
-                fontWeight: "700",
+                border:
+                  "2px solid rgba(216,154,43,.8)",
+                borderRadius: "14px",
+                padding: "15px 20px",
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+                justifyContent: "center",
+                background:
+                  "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
+                color: "#111",
+                cursor:
+                  cooldownRemaining > 0
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  cooldownRemaining > 0
+                    ? 0.55
+                    : 1,
+                fontWeight: "800",
+                fontFamily: "Georgia, serif",
+                fontSize: "15px",
+                boxShadow:
+                  "0 0 18px rgba(216,154,43,.25)",
+                whiteSpace: "nowrap",
               }}
             >
-              VIEW
-            </span>
+              <FaBell />
+
+              <span>
+                {cooldownRemaining > 0
+                  ? `WAITER CALLED • ${Math.floor(
+                    cooldownRemaining / 60000
+                  )}:${String(
+                    Math.floor(
+                      (cooldownRemaining % 60000) / 1000
+                    )
+                  ).padStart(2, "0")}`
+                  : "CALL WAITER"}
+              </span>
+            </button>
+
+
+            {/* CART */}
+
+            <div
+              onClick={() => navigate("/cart")}
+              style={{
+                border:
+                  "2px solid rgba(216,154,43,.8)",
+                borderRadius: "14px",
+                padding: "15px 25px",
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+                background:
+                  "rgba(0,0,0,.45)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <FaShoppingCart />
+
+              <span>CART</span>
+
+              <span
+                style={{
+                  color: "#d89a2b",
+                  fontWeight: "700",
+                }}
+              >
+                VIEW
+              </span>
+            </div>
+
           </div>
+
+
+          {/* MY ORDERS */}
 
           <div
             onClick={() =>
@@ -265,9 +444,10 @@ export default function Home() {
               VIEW
             </span>
           </div>
+
         </div>
       </div>
-    
+
 
       {/* HERO SECTION */}
 
@@ -636,6 +816,276 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      {/* CALL WAITER MODAL */}
+      {showWaiterModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.78)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!assistanceSubmitting) {
+              setShowWaiterModal(false);
+              setAssistanceMessage("");
+            }
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "480px",
+              background:
+                "linear-gradient(145deg, rgba(20,20,20,.98), rgba(5,5,5,.99))",
+              border:
+                "1px solid rgba(216,154,43,.55)",
+              borderRadius: "24px",
+              padding: "35px",
+              boxShadow:
+                "0 0 50px rgba(216,154,43,.18)",
+              fontFamily: "Georgia, serif",
+            }}
+          >
+            {/* HEADER */}
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: "30px",
+              }}
+            >
+              <div
+                style={{
+                  width: "70px",
+                  height: "70px",
+                  margin: "0 auto 15px",
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#111",
+                  fontSize: "28px",
+                  boxShadow:
+                    "0 0 25px rgba(216,154,43,.3)",
+                }}
+              >
+                <FaBell />
+              </div>
+
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#d89a2b",
+                  fontSize: "28px",
+                  letterSpacing: "2px",
+                }}
+              >
+                CALL WAITER
+              </h2>
+
+              <p
+                style={{
+                  color: "#aaa",
+                  marginTop: "10px",
+                  fontSize: "15px",
+                }}
+              >
+                Please provide your details so our waiter
+                can assist you.
+              </p>
+            </div>
+
+            {/* CUSTOMER NAME */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "#d89a2b",
+                  fontWeight: "700",
+                  marginBottom: "8px",
+                  letterSpacing: "1px",
+                }}
+              >
+                CUSTOMER NAME
+              </label>
+
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setAssistanceMessage("");
+                }}
+                placeholder="Enter your name"
+                disabled={assistanceSubmitting}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border:
+                    "1px solid rgba(216,154,43,.35)",
+                  background: "rgba(0,0,0,.65)",
+                  color: "#fff",
+                  outline: "none",
+                  fontFamily: "Georgia, serif",
+                  fontSize: "16px",
+                }}
+              />
+            </div>
+
+            {/* TABLE NUMBER */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "#d89a2b",
+                  fontWeight: "700",
+                  marginBottom: "8px",
+                  letterSpacing: "1px",
+                }}
+              >
+                TABLE NUMBER
+              </label>
+
+              <select
+                value={tableNumber}
+                onChange={(e) => {
+                  setTableNumber(e.target.value);
+                  setAssistanceMessage("");
+                }}
+                disabled={assistanceSubmitting}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border:
+                    "1px solid rgba(216,154,43,.35)",
+                  background: "#111",
+                  color: tableNumber ? "#fff" : "#888",
+                  outline: "none",
+                  fontFamily: "Georgia, serif",
+                  fontSize: "16px",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">
+                  Select your table
+                </option>
+
+                {Array.from(
+                  { length: 30 },
+                  (_, index) => index + 1
+                ).map((table) => (
+                  <option
+                    key={table}
+                    value={String(table)}
+                  >
+                    Table {table}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* MESSAGE */}
+            {assistanceMessage && (
+              <div
+                style={{
+                  marginBottom: "20px",
+                  padding: "12px 15px",
+                  borderRadius: "10px",
+                  background:
+                    assistanceMessage.includes("notified")
+                      ? "rgba(40,120,70,.18)"
+                      : "rgba(180,60,60,.15)",
+                  border:
+                    assistanceMessage.includes("notified")
+                      ? "1px solid rgba(80,180,110,.35)"
+                      : "1px solid rgba(220,90,90,.35)",
+                  color:
+                    assistanceMessage.includes("notified")
+                      ? "#8ee0a5"
+                      : "#ff9b9b",
+                  textAlign: "center",
+                  fontSize: "14px",
+                }}
+              >
+                {assistanceMessage}
+              </div>
+            )}
+
+            {/* BUTTONS */}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+              }}
+            >
+              <button
+                type="button"
+                disabled={assistanceSubmitting}
+                onClick={() => {
+                  setShowWaiterModal(false);
+                  setAssistanceMessage("");
+                }}
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  borderRadius: "12px",
+                  border:
+                    "1px solid rgba(255,255,255,.18)",
+                  background: "rgba(255,255,255,.06)",
+                  color: "#bbb",
+                  cursor: assistanceSubmitting
+                    ? "not-allowed"
+                    : "pointer",
+                  fontFamily: "Georgia, serif",
+                  fontWeight: "700",
+                }}
+              >
+                CANCEL
+              </button>
+
+              <button
+                type="button"
+                onClick={requestWaiter}
+                disabled={assistanceSubmitting}
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  borderRadius: "12px",
+                  border:
+                    "2px solid rgba(216,154,43,.8)",
+                  background:
+                    assistanceSubmitting
+                      ? "rgba(216,154,43,.35)"
+                      : "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
+                  color: "#111",
+                  cursor: assistanceSubmitting
+                    ? "not-allowed"
+                    : "pointer",
+                  fontFamily: "Georgia, serif",
+                  fontWeight: "800",
+                }}
+              >
+                {assistanceSubmitting
+                  ? "REQUESTING..."
+                  : "REQUEST WAITER"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
 

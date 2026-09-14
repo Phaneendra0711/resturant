@@ -87,8 +87,7 @@ const orderSchema = new mongoose.Schema(
   {
     customerName: {
       type: String,
-      required: true,
-      trim: true,
+      default: "Customer",
     },
 
     items: {
@@ -112,16 +111,6 @@ const orderSchema = new mongoose.Schema(
         "SERVED",
       ],
       default: "NEW",
-    },
-
-    chef: {
-      type: staffAssignmentSchema,
-      default: () => ({}),
-    },
-
-    waiter: {
-      type: staffAssignmentSchema,
-      default: () => ({}),
     },
 
     paymentStatus: {
@@ -158,6 +147,31 @@ const orderSchema = new mongoose.Schema(
     tableNumber: {
       type: String,
       default: "",
+    },
+
+    couponCode: {
+      type: String,
+      default: "",
+    },
+
+    chefDescription: {
+      type: String,
+      default: "",
+    },
+
+    waiterDescription: {
+      type: String,
+      default: "",
+    },
+
+    chef: {
+      type: staffAssignmentSchema,
+      default: () => ({}),
+    },
+
+    waiter: {
+      type: staffAssignmentSchema,
+      default: () => ({}),
     },
   },
   {

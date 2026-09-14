@@ -6,6 +6,8 @@ import dns from "node:dns";
 import orderRoutes from "./routes/orders.js";
 import staffRoutes from "./routes/staff.js";
 import feedbackRoutes from "./routes/feedback.js";
+import assistanceRoutes from "./routes/assistance.js";
+import Staff from "./models/Staff.js";
 
 dns.setServers([
   "8.8.8.8",
@@ -23,6 +25,7 @@ app.use(express.json());
 app.use("/api/orders", orderRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/assistance", assistanceRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -40,8 +43,37 @@ if (!process.env.MONGO_URI) {
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB connected successfully");
+
+    // Automatically initialize waiterTask for old waiter accounts.
+    // Only missing/null values are changed.
+    // Existing ORDER or ASSISTANCE values are NOT overwritten.
+    try {
+      const result = await Staff.updateMany(
+        {
+          role: "WAITER",
+          $or: [
+            { waiterTask: { $exists: false } },
+            { waiterTask: null },
+          ],
+        },
+        {
+          $set: {
+            waiterTask: "",
+          },
+        }
+      );
+
+      console.log(
+        `Waiter task initialization complete. Updated: ${result.modifiedCount}`
+      );
+    } catch (error) {
+      console.error(
+        "Waiter task initialization error:",
+        error
+      );
+    }
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(
@@ -50,5 +82,8 @@ mongoose
     });
   })
   .catch((error) => {
-    console.error("MongoDB connection error:", error.message);
+    console.error(
+      "MongoDB connection error:",
+      error.message
+    );
   });

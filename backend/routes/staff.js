@@ -166,6 +166,9 @@ router.post("/", async (req, res) => {
         passwordHash,
 
         role,
+
+        // Every waiter starts with no active task
+        waiterTask: "",
       });
 
     res.status(201).json({
