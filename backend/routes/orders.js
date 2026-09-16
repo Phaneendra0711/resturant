@@ -1229,5 +1229,202 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
+/*
+  UPDATE INDIVIDUAL ITEM STATUS
+
+  PATCH /api/orders/:orderId/items/:itemId/status
+
+  Used by:
+  Chef   → PREPARING / READY
+  Waiter → ON_THE_WAY / SERVED
+*/
+router.patch(
+  "/:orderId/items/:itemId/status",
+  async (req, res) => {
+    try {
+      const {
+        status,
+        staffId,
+        staffName,
+        staffRole,
+      } = req.body;
+
+      const allowedStatuses = [
+        "NEW",
+        "PREPARING",
+        "READY",
+        "ON_THE_WAY",
+        "SERVED",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid item status",
+        });
+      }
+
+      const order = await Order.findById(
+        req.params.orderId
+      );
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      const item = order.items.id(
+        req.params.itemId
+      );
+
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Order item not found",
+        });
+      }
+
+      const now = new Date();
+
+      /*
+        =========================
+        CHEF
+        =========================
+      */
+
+      if (
+        staffRole === "chef" &&
+        status === "PREPARING"
+      ) {
+        item.status = "PREPARING";
+
+        item.acceptedAt =
+          item.acceptedAt || now;
+
+        item.chefId = staffId || null;
+        item.chefName = staffName || "";
+      }
+
+      if (
+        staffRole === "chef" &&
+        status === "READY"
+      ) {
+        item.status = "READY";
+
+        item.acceptedAt =
+          item.acceptedAt || now;
+
+        item.readyAt = now;
+
+        item.chefId =
+          staffId || item.chefId;
+
+        item.chefName =
+          staffName || item.chefName;
+      }
+
+      /*
+        =========================
+        WAITER
+        =========================
+      */
+
+      if (
+        staffRole === "waiter" &&
+        status === "ON_THE_WAY"
+      ) {
+        item.status = "ON_THE_WAY";
+
+        item.waiterAssignedAt =
+          item.waiterAssignedAt || now;
+
+        item.waiterId = staffId || null;
+        item.waiterName = staffName || "";
+      }
+
+      if (
+        staffRole === "waiter" &&
+        status === "SERVED"
+      ) {
+        item.status = "SERVED";
+
+        item.waiterAssignedAt =
+          item.waiterAssignedAt || now;
+
+        item.servedAt = now;
+
+        item.waiterId =
+          staffId || item.waiterId;
+
+        item.waiterName =
+          staffName || item.waiterName;
+      }
+
+      /*
+        =========================
+        UPDATE OVERALL ORDER STATUS
+        =========================
+      */
+
+      const itemStatuses =
+        order.items.map(
+          (orderItem) => orderItem.status
+        );
+
+      if (
+        itemStatuses.every(
+          (s) => s === "SERVED"
+        )
+      ) {
+        order.status = "SERVED";
+      } else if (
+        itemStatuses.some(
+          (s) => s === "ON_THE_WAY"
+        )
+      ) {
+        order.status = "ON_THE_WAY";
+      } else if (
+        itemStatuses.some(
+          (s) => s === "READY"
+        )
+      ) {
+        order.status = "READY";
+      } else if (
+        itemStatuses.some(
+          (s) => s === "PREPARING"
+        )
+      ) {
+        order.status = "PREPARING";
+      } else {
+        order.status = "NEW";
+      }
+
+      order.updatedAt = now;
+
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Item status updated successfully",
+        order,
+        item,
+      });
+
+    } catch (error) {
+      console.error(
+        "Update item status error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to update item status",
+        error: error.message,
+      });
+    }
+  }
+);
 
 export default router;

@@ -7,11 +7,6 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
     },
 
-    category: {
-      type: String,
-      default: "",
-    },
-
     price: {
       type: Number,
       required: true,
@@ -27,80 +22,26 @@ const orderItemSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-  },
-  { _id: false }
-);
 
-const staffAssignmentSchema = new mongoose.Schema(
-  {
-    staffId: {
+    // Customer's food preference/instruction
+    preference: {
       type: String,
       default: "",
     },
 
-    name: {
-      type: String,
-      default: "",
+    // Customer-side estimated preparation time
+    estimatedMinutes: {
+      type: Number,
+      default: 25,
     },
 
-    acceptedAt: {
-      type: Date,
-      default: null,
-    },
-
-    readyAt: {
-      type: Date,
-      default: null,
-    },
-
-    assignedAt: {
-      type: Date,
-      default: null,
-    },
-
-    servedAt: {
-      type: Date,
-      default: null,
-    },
-
-    targetMinutes: {
+    // Chef's working estimation
+    chefEstimatedMinutes: {
       type: Number,
       default: 15,
     },
 
-    performance: {
-      type: String,
-      enum: [
-        "FAST",
-        "PERFECT",
-        "SLOW",
-        "OUT_OF_TIME",
-        "",
-      ],
-      default: "",
-    },
-  },
-  { _id: false }
-);
-
-const orderSchema = new mongoose.Schema(
-  {
-    customerName: {
-      type: String,
-      default: "Customer",
-    },
-
-    items: {
-      type: [orderItemSchema],
-      required: true,
-    },
-
-    totalAmount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
+    // Individual item tracking
     status: {
       type: String,
       enum: [
@@ -113,75 +54,164 @@ const orderSchema = new mongoose.Schema(
       default: "NEW",
     },
 
-    paymentStatus: {
-      type: String,
-      enum: [
-        "PENDING",
-        "PAID",
-        "FAILED",
-      ],
-      default: "PENDING",
-    },
-
-    paymentMethod: {
-      type: String,
-      enum: [
-        "UPI",
-        "CARD",
-        "CASH",
-        "DEMO",
-      ],
-      default: "DEMO",
-    },
-
-    amountPaid: {
-      type: Number,
-      default: 0,
-    },
-
-    paidAt: {
+    // Chef timing
+    acceptedAt: {
       type: Date,
       default: null,
     },
 
-    tableNumber: {
+    readyAt: {
+      type: Date,
+      default: null,
+    },
+
+    chefId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null,
+    },
+
+    chefName: {
       type: String,
       default: "",
     },
 
-    couponCode: {
+    // Waiter timing
+    waiterAssignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    servedAt: {
+      type: Date,
+      default: null,
+    },
+
+    waiterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null,
+    },
+
+    waiterName: {
       type: String,
       default: "",
-    },
-
-    chefDescription: {
-      type: String,
-      default: "",
-    },
-
-    waiterDescription: {
-      type: String,
-      default: "",
-    },
-
-    chef: {
-      type: staffAssignmentSchema,
-      default: () => ({}),
-    },
-
-    waiter: {
-      type: staffAssignmentSchema,
-      default: () => ({}),
     },
   },
   {
-    timestamps: true,
+    _id: true,
   }
 );
 
-const Order = mongoose.model(
-  "Order",
-  orderSchema
-);
+const orderSchema = new mongoose.Schema({
+  customerName: {
+    type: String,
+    required: true,
+  },
+
+  tableNumber: {
+    type: String,
+    required: true,
+  },
+
+  // Each item now has its own tracking
+  items: {
+    type: [orderItemSchema],
+    required: true,
+  },
+
+  totalAmount: {
+    type: Number,
+    required: true,
+  },
+
+  // Kept for compatibility with your existing system.
+  // Later we will make this represent the overall order status.
+  status: {
+    type: String,
+    enum: [
+      "NEW",
+      "PREPARING",
+      "READY",
+      "ON_THE_WAY",
+      "SERVED",
+    ],
+    default: "NEW",
+  },
+
+  // Kept for compatibility with existing code
+  chef: {
+    staffId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null,
+    },
+    name: {
+      type: String,
+      default: "",
+    },
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
+    readyAt: {
+      type: Date,
+      default: null,
+    },
+  },
+
+  // Kept for compatibility with existing code
+  waiter: {
+    staffId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null,
+    },
+    name: {
+      type: String,
+      default: "",
+    },
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+    servedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+
+  paymentStatus: {
+    type: String,
+    default: "PENDING",
+  },
+
+  paymentMethod: {
+    type: String,
+    default: "",
+  },
+
+  amountPaid: {
+    type: Number,
+    default: 0,
+  },
+
+  paidAt: {
+    type: Date,
+    default: null,
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const Order = mongoose.model("Order", orderSchema);
 
 export default Order;
