@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 
 import Order from "../models/Order.js";
 import AssistanceRequest from "../models/AssistanceRequest.js";
+import Coupon from "../models/Coupon.js";
+import { addCredits, todayFoodServedCount } from "../utils/credits.js";
 
 const router = express.Router();
 
@@ -80,6 +82,28 @@ const normalizeServicePreference = (item) => {
 };
 
 const isFood = (item) => !isServiceItem(item);
+
+const secondsBetween = (from, to = new Date()) => Math.max(
+  0,
+  Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 1000)
+);
+
+const chefTimerPoints = (item, finishedAt) => {
+  const elapsedSeconds = secondsBetween(item.acceptedAt, finishedAt);
+  if (elapsedSeconds < 15 * 60) {
+    return { points: Math.floor((15 * 60 - elapsedSeconds) / 2), elapsedSeconds, reason: "CHEF_EARLY_READY" };
+  }
+  if (elapsedSeconds > 20 * 60) {
+    return { points: -2 * (elapsedSeconds - 20 * 60), elapsedSeconds, reason: "CHEF_LATE_READY" };
+  }
+  return { points: 0, elapsedSeconds, reason: "CHEF_ORANGE_WINDOW" };
+};
+
+const waiterTimerPoints = (item, finishedAt) => {
+  const elapsedSeconds = secondsBetween(item.waiterAssignedAt, finishedAt);
+  const targetSeconds = (isFood(item) ? 8 : 5) * 60;
+  return { points: Math.max(0, Math.floor((targetSeconds - elapsedSeconds) / 2)), elapsedSeconds };
+};
 
 const getWaiterTaskGroup = (order, item) => {
   const preference = normalizeServicePreference(item);
@@ -600,6 +624,26 @@ router.post("/", async (req, res) => {
       -------------------------------------------------------
     */
 
+    const requestedCouponCode = String(couponCode || "").trim();
+    const coupon = requestedCouponCode
+      ? await Coupon.findOne({ code: requestedCouponCode, redeemedAt: null })
+      : null;
+
+    if (requestedCouponCode && !coupon) {
+      return res.status(409).json({ success: false, message: "Coupon is invalid or has already been used" });
+    }
+
+    const foodSubtotal = calculatedItems
+      .filter((item) => item.serviceType === "FOOD")
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const grossTotal = calculatedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    ) + Math.round(foodSubtotal * 0.05);
+    const finalTotal = coupon
+      ? Math.max(0, grossTotal - coupon.amount)
+      : grossTotal;
+
     const order = await Order.create({
       customerName:
         customerName || "Customer",
@@ -610,7 +654,7 @@ router.post("/", async (req, res) => {
       items: calculatedItems,
 
       totalAmount:
-        Number(totalAmount) || 0,
+        finalTotal,
 
       customerEstimate: {
         firstMinutes:
@@ -629,14 +673,13 @@ router.post("/", async (req, res) => {
         paymentMethod || "DEMO",
 
       amountPaid:
-        Number(amountPaid) || 0,
+        finalTotal,
 
       paidAt: paidAt
         ? new Date(paidAt)
         : null,
 
-      couponCode:
-        couponCode || "",
+      couponCode: requestedCouponCode,
 
       chefDescription:
         chefDescription || "",
@@ -668,6 +711,18 @@ router.post("/", async (req, res) => {
       "ORDER CREATED:",
       order._id
     );
+
+    if (coupon) {
+      const redeemedCoupon = await Coupon.findOneAndUpdate(
+        { _id: coupon._id, redeemedAt: null },
+        { $set: { redeemedAt: new Date(), redeemedOrderId: order._id } },
+        { new: true }
+      );
+      if (!redeemedCoupon) {
+        await Order.findByIdAndDelete(order._id);
+        return res.status(409).json({ success: false, message: "Coupon is invalid or has already been used" });
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -1193,6 +1248,30 @@ router.patch(
       }
       await order.save();
 
+      let servedToday = await todayFoodServedCount(staffId);
+      for (const servedItem of groupItems) {
+        if (!isFood(servedItem)) continue;
+
+        await addCredits({
+          staffId, staffName, role: "WAITER", points: 100,
+          reason: "WAITER_FOOD_SERVED", orderId: order._id,
+          itemId: String(servedItem._id),
+        });
+
+        if (servedToday < 100) {
+          const fast = waiterTimerPoints(servedItem, now);
+          if (fast.points > 0) {
+            await addCredits({
+              staffId, staffName, role: "WAITER", points: fast.points,
+              reason: "WAITER_FAST_SERVICE", orderId: order._id,
+              itemId: `fast-${servedItem._id}`,
+              elapsedSeconds: fast.elapsedSeconds,
+            });
+          }
+        }
+        servedToday += 1;
+      }
+
       return res.json({
         success: true,
         message: "Waiter task group marked as served",
@@ -1302,6 +1381,16 @@ router.patch(
           "PREPARING";
 
         await order.save();
+
+        const timerCredit = chefTimerPoints(item, now);
+        if (timerCredit.points !== 0) {
+          await addCredits({
+            staffId: item.chefId, staffName: item.chefName, role: "CHEF",
+            points: timerCredit.points, reason: timerCredit.reason,
+            orderId: order._id, itemId: String(item._id),
+            elapsedSeconds: timerCredit.elapsedSeconds,
+          });
+        }
 
         return res.json({
           success: true,

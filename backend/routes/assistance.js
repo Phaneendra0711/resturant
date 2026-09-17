@@ -1,6 +1,7 @@
 import express from "express";
 import AssistanceRequest from "../models/AssistanceRequest.js";
 import Staff from "../models/Staff.js";
+import { addCredits } from "../utils/credits.js";
 
 const router = express.Router();
 
@@ -301,6 +302,15 @@ router.patch(
             "This assistance request was already accepted or completed.",
         });
       }
+
+      await addCredits({
+        staffId,
+        staffName: request.acceptedByName,
+        role: "WAITER",
+        points: 50,
+        reason: "WAITER_ASSISTANCE_COMPLETED",
+        assistanceId: request._id,
+      });
 
 
       console.log(

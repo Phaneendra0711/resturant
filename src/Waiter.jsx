@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -337,6 +337,9 @@ export default function Waiter() {
 
   const [clock, setClock] =
     useState(new Date());
+  const [creditPoints, setCreditPoints] = useState(0);
+  const [creditChange, setCreditChange] = useState(null);
+  const previousCreditPoints = useRef(null);
 
   const staffId =
     getStaffId();
@@ -358,6 +361,31 @@ export default function Waiter() {
       navigate("/staff-login");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (!staffId) return undefined;
+    const loadCredits = async () => {
+      const response = await fetch(`/api/staff/${staffId}/credits`);
+      if (response.ok) {
+        const data = await response.json();
+        const nextPoints = data.creditPoints || 0;
+        if (previousCreditPoints.current !== null && nextPoints !== previousCreditPoints.current) {
+          setCreditChange(nextPoints - previousCreditPoints.current);
+        }
+        previousCreditPoints.current = nextPoints;
+        setCreditPoints(nextPoints);
+      }
+    };
+    loadCredits();
+    const interval = setInterval(loadCredits, 5000);
+    return () => clearInterval(interval);
+  }, [staffId]);
+
+  useEffect(() => {
+    if (creditChange === null) return undefined;
+    const timer = setTimeout(() => setCreditChange(null), 1800);
+    return () => clearTimeout(timer);
+  }, [creditChange]);
 
   /* =======================================================
      CLOCK
@@ -889,6 +917,9 @@ export default function Waiter() {
   ======================================================= */
 
   const logout = () => {
+    if (staffId) {
+      fetch(`/api/staff/${staffId}/logout`, { method: "PATCH", keepalive: true });
+    }
     localStorage.removeItem(
       "userRole"
     );
@@ -1591,17 +1622,22 @@ export default function Waiter() {
             </h1>
           </div>
 
-          <div className="waiter-time">
-            <FaClock />
-
-            <div>
-              <h3>
-                {clock.toLocaleTimeString()}
-              </h3>
-
-              <p>
-                Table Service
-              </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className={`waiter-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
+              <span style={{ color: "#ffcc4d", fontWeight: 800 }}>★ {creditPoints}</span>
+              {creditChange !== null && (
+                <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
+                  {creditChange > 0 ? `+${creditChange}` : creditChange}
+                </span>
+              )}
+              <div><p>Credit Points</p></div>
+            </div>
+            <div className="waiter-time">
+              <FaClock />
+              <div>
+                <h3>{clock.toLocaleTimeString()}</h3>
+                <p>Table Service</p>
+              </div>
             </div>
           </div>
         </div>

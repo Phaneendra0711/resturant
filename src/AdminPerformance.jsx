@@ -42,6 +42,11 @@ export default function AdminPerformance() {
 
   const [orderFilter, setOrderFilter] =
     useState("ALL");
+  const [showCashCoupon, setShowCashCoupon] = useState(false);
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashCustomer, setCashCustomer] = useState("");
+  const [cashPhone, setCashPhone] = useState("");
+  const [generatedCoupon, setGeneratedCoupon] = useState(null);
 
   // ==========================================
   // ADMIN PROTECTION
@@ -420,6 +425,24 @@ export default function AdminPerformance() {
     ).toLocaleString(
       "en-IN"
     )}`;
+
+  const generateCashCoupon = async (event) => {
+    event.preventDefault();
+    const response = await fetch("/api/coupons/cash", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: Number(cashAmount), customerName: cashCustomer,
+        customerPhone: cashPhone, adminId: localStorage.getItem("staffId"),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      alert(data.message || "Unable to generate coupon");
+      return;
+    }
+    setGeneratedCoupon(data.coupon);
+  };
 
   // ==========================================
   // INDIVIDUAL STAFF PERFORMANCE
@@ -1034,6 +1057,32 @@ export default function AdminPerformance() {
   return (
     <div style={page}>
 
+      {showCashCoupon && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "grid", placeItems: "center", padding: 20 }}>
+          <form onSubmit={generateCashCoupon} style={{ width: 420, maxWidth: "100%", background: "#171717", border: "1px solid #ffb347", borderRadius: 16, padding: 26 }}>
+            <h2 style={{ color: "#ffb347", marginTop: 0 }}>Generate cash coupon</h2>
+            <p style={{ color: "#aaa" }}>Confirm the cash received by the admin, then give this one-use code to the customer.</p>
+            {generatedCoupon ? (
+              <div style={{ textAlign: "center", padding: 18, background: "#0e2616", borderRadius: 10 }}>
+                <div style={{ color: "#fff", fontSize: 30, fontWeight: 800, letterSpacing: 5 }}>{generatedCoupon.code}</div>
+                <div style={{ color: "#7ee787", marginTop: 8 }}>Value: {currency(generatedCoupon.amount)}</div>
+                <button type="button" onClick={() => setShowCashCoupon(false)} style={{ ...goldButton, marginTop: 18 }}>Done</button>
+              </div>
+            ) : (
+              <>
+                <input required type="number" min="1" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Cash amount (₹)" style={{ width: "100%", padding: 12, marginTop: 12, borderRadius: 8 }} />
+                <input value={cashCustomer} onChange={(e) => setCashCustomer(e.target.value)} placeholder="Customer name" style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 8 }} />
+                <input value={cashPhone} onChange={(e) => setCashPhone(e.target.value)} placeholder="Customer phone (optional)" style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 8 }} />
+                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  <button type="submit" style={{ ...goldButton, background: "#3f8f4f", color: "#fff", flex: 1 }}>Generate</button>
+                  <button type="button" onClick={() => setShowCashCoupon(false)} style={{ ...goldButton, background: "#444", color: "#fff", flex: 1 }}>Cancel</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+
       {/* ======================================
           HEADER
       ====================================== */}
@@ -1132,6 +1181,7 @@ export default function AdminPerformance() {
             <FaFileExcel />
             &nbsp; Download Orders data
           </button>
+
 
           <button
             onClick={
@@ -1901,6 +1951,15 @@ export default function AdminPerformance() {
             Individual employee performance
           </p>
 
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, marginBottom: 24 }}>
+            {staff.filter((member) => member.role !== "ADMIN").map((member) => (
+              <div key={member._id} style={{ padding: 10, borderRadius: 9, background: "#121212", border: "1px solid #292929" }}>
+                <div style={{ color: "#ddd", fontSize: 13 }}>{member.name} · {member.role}</div>
+                <strong style={{ color: "#ffcc4d" }}>★ {member.creditPoints || 0}</strong>
+              </div>
+            ))}
+          </div>
+
 
           {/* ==================================
         CHEFS
@@ -1995,7 +2054,7 @@ export default function AdminPerformance() {
                       display:
                         "grid",
                       gridTemplateColumns:
-                        "repeat(3,1fr)",
+                        "repeat(4,1fr)",
                       gap: "8px",
                     }}
                   >
@@ -2022,6 +2081,8 @@ export default function AdminPerformance() {
                           : "—"
                       }
                     />
+
+                    <PerformanceMini label="Credit Points" value={`★ ${chef.creditPoints || 0}`} />
 
                   </div>
 
@@ -2127,7 +2188,7 @@ export default function AdminPerformance() {
                       display:
                         "grid",
                       gridTemplateColumns:
-                        "repeat(3,1fr)",
+                        "repeat(4,1fr)",
                       gap: "8px",
                     }}
                   >
@@ -2154,6 +2215,8 @@ export default function AdminPerformance() {
                           : "—"
                       }
                     />
+
+                    <PerformanceMini label="Credit Points" value={`★ ${waiter.creditPoints || 0}`} />
 
                   </div>
 

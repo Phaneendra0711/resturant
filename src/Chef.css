@@ -494,3 +494,11 @@ body {
   }
 
 }
+
+.credit-points-box { position: relative; overflow: visible; }
+.credit-points-pulse { animation: credit-points-pulse .65s ease-out; }
+.credit-change { position: absolute; top: -18px; right: -8px; font-size: 15px; font-weight: 800; animation: credit-change-float 1.8s ease-out forwards; pointer-events: none; }
+.credit-change-positive { color: #43df7b; }
+.credit-change-negative { color: #ff5f5f; }
+@keyframes credit-points-pulse { 50% { transform: scale(1.12); filter: drop-shadow(0 0 9px #ffcc4d); } }
+@keyframes credit-change-float { from { opacity: 0; transform: translateY(8px) scale(.8); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(-30px) scale(1.08); } }

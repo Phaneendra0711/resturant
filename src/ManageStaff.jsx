@@ -872,6 +872,12 @@ export default function ManageStaff() {
                   </th>
 
                   <th
+                    style={{ padding: "18px", textAlign: "left", color: "#ffb347" }}
+                  >
+                    Credit Points
+                  </th>
+
+                  <th
                     style={{
                       padding: "18px",
                       textAlign:
@@ -984,6 +990,10 @@ export default function ManageStaff() {
                             ? "● Active"
                             : "● Disabled"}
                         </span>
+                      </td>
+
+                      <td style={{ padding: "18px", color: "#ffcc4d", fontWeight: "bold" }}>
+                        {employee.role === "ADMIN" ? "—" : `★ ${employee.creditPoints || 0}`}
                       </td>
 
                       <td

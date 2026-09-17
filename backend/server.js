@@ -7,6 +7,7 @@ import orderRoutes from "./routes/orders.js";
 import staffRoutes from "./routes/staff.js";
 import feedbackRoutes from "./routes/feedback.js";
 import assistanceRoutes from "./routes/assistance.js";
+import couponRoutes from "./routes/coupons.js";
 
 dotenv.config({ path: "./backend/.env" });
 
@@ -34,6 +35,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/assistance", assistanceRoutes);
+app.use("/api/coupons", couponRoutes);
 
 /* =========================
    BASIC ROUTE

@@ -4,6 +4,11 @@ import { dishesData } from "./data";
 
 export default function Admin() {
   const [dishes, setDishes] = useState([]);
+  const [showCashCoupon, setShowCashCoupon] = useState(false);
+  const [cashAmount, setCashAmount] = useState("");
+  const [generatedCoupon, setGeneratedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [generatingCoupon, setGeneratingCoupon] = useState(false);
 
   const navigate = useNavigate();
 
@@ -105,6 +110,26 @@ export default function Admin() {
     navigate("/staff-login");
   };
 
+  const generateCashCoupon = async (event) => {
+    event.preventDefault();
+    setCouponError("");
+    setGeneratingCoupon(true);
+    try {
+      const response = await fetch("/api/coupons/cash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(cashAmount), adminId: localStorage.getItem("staffId") }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to generate coupon");
+      setGeneratedCoupon(data.coupon);
+    } catch (error) {
+      setCouponError(error.message || "Coupon server is unavailable");
+    } finally {
+      setGeneratingCoupon(false);
+    }
+  };
+
   // ==========================================
   // GROUP DISHES BY SECTION
   // ==========================================
@@ -140,6 +165,31 @@ export default function Admin() {
         padding: "30px",
       }}
     >
+
+      {showCashCoupon && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "grid", placeItems: "center", padding: 20 }}>
+          <form onSubmit={generateCashCoupon} style={{ width: 380, maxWidth: "100%", padding: 26, borderRadius: 16, background: "#171717", border: "1px solid #ffb347" }}>
+            <h2 style={{ color: "#ffb347", marginTop: 0 }}>Cash coupon</h2>
+            {generatedCoupon ? (
+              <div style={{ textAlign: "center", padding: 18, borderRadius: 10, background: "#0e2616" }}>
+                <div style={{ fontSize: 32, letterSpacing: 5, fontWeight: 800 }}>{generatedCoupon.code}</div>
+                <p style={{ color: "#7ee787" }}>Coupon value: ₹{generatedCoupon.amount}</p>
+                <button type="button" onClick={() => setShowCashCoupon(false)} style={{ padding: "10px 18px", border: 0, borderRadius: 8, cursor: "pointer" }}>Done</button>
+              </div>
+            ) : (
+              <>
+                <p style={{ color: "#aaa" }}>Enter the cash amount received from the customer.</p>
+                <input required type="number" min="1" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Amount (₹)" style={{ width: "100%", padding: 12, borderRadius: 8, boxSizing: "border-box" }} />
+                {couponError && <p style={{ color: "#ff7777", marginBottom: 0 }}>{couponError}</p>}
+                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  <button type="submit" disabled={generatingCoupon} style={{ flex: 1, padding: 11, background: "#4caf50", color: "white", border: 0, borderRadius: 8, fontWeight: "bold" }}>{generatingCoupon ? "Generating..." : "Generate code"}</button>
+                  <button type="button" onClick={() => setShowCashCoupon(false)} style={{ flex: 1, padding: 11, background: "#444", color: "white", border: 0, borderRadius: 8 }}>Cancel</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
 
       {/* ======================================
           HEADER
@@ -230,6 +280,13 @@ export default function Admin() {
             }}
           >
             Manage Staff
+          </button>
+
+          <button
+            onClick={() => { setCashAmount(""); setGeneratedCoupon(null); setCouponError(""); setShowCashCoupon(true); }}
+            style={{ padding: "13px 22px", background: "#4caf50", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "15px" }}
+          >
+            Cash Coupon
           </button>
 
           {/* LOGOUT */}

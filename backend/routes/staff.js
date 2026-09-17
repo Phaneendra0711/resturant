@@ -1,6 +1,8 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import Staff from "../models/Staff.js";
+import CreditTransaction from "../models/CreditTransaction.js";
+import StaffSession from "../models/StaffSession.js";
 
 const router = express.Router();
 
@@ -49,6 +51,10 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    staff.onlineAt = new Date();
+    await staff.save();
+    await StaffSession.create({ staffId: staff._id, role: staff.role, loginAt: staff.onlineAt });
+
     return res.json({
       success: true,
       staff: {
@@ -57,6 +63,7 @@ router.post("/login", async (req, res) => {
         username: staff.username,
         role: staff.role,
         active: staff.active,
+        creditPoints: staff.creditPoints,
       },
     });
   } catch (error) {
@@ -66,6 +73,31 @@ router.post("/login", async (req, res) => {
       success: false,
       message: "Server error during login",
     });
+  }
+});
+
+router.get("/:id/credits", async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id).select("name role creditPoints");
+    if (!staff) return res.status(404).json({ success: false, message: "Staff member not found" });
+    const transactions = await CreditTransaction.find({ staffId: staff._id }).sort({ createdAt: -1 }).limit(50);
+    return res.json({ success: true, creditPoints: staff.creditPoints, transactions });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch credits" });
+  }
+});
+
+router.patch("/:id/logout", async (req, res) => {
+  try {
+    await Staff.findByIdAndUpdate(req.params.id, { $set: { onlineAt: null } });
+    await StaffSession.findOneAndUpdate(
+      { staffId: req.params.id, logoutAt: null },
+      { $set: { logoutAt: new Date() } },
+      { sort: { loginAt: -1 } }
+    );
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to record logout" });
   }
 });
 

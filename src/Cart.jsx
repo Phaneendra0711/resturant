@@ -379,6 +379,7 @@ export default function Cart() {
     couponCode,
     setCouponCode,
   ] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
 
 
   const [
@@ -859,6 +860,27 @@ export default function Cart() {
     serviceSubtotal +
     gst;
 
+  const payableTotal = Math.max(0, total - couponDiscount);
+
+  const applyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return alert("Enter a coupon code first");
+    try {
+      const response = await fetch("/api/coupons/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, total }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to apply coupon");
+      if (data.unusedAmount > 0 && !window.confirm(`This coupon has ₹${data.unusedAmount} more than this order. The remaining value will be lost. Do you want to continue?`)) return;
+      setCouponDiscount(data.discount);
+    } catch (error) {
+      setCouponDiscount(0);
+      alert(error.message);
+    }
+  };
+
 
   /* =========================================================
      CART COUNT
@@ -1109,7 +1131,7 @@ export default function Cart() {
          */
 
         totalAmount:
-          total,
+          payableTotal,
 
 
         paymentStatus:
@@ -1119,7 +1141,7 @@ export default function Cart() {
           "DEMO",
 
         amountPaid:
-          total,
+          payableTotal,
 
         paidAt:
           new Date(),
@@ -2143,7 +2165,7 @@ export default function Cart() {
 
               <strong>
                 ₹
-                {total.toFixed(
+                {payableTotal.toFixed(
                   0
                 )}
               </strong>
@@ -2256,13 +2278,22 @@ export default function Cart() {
                   }
                   onChange={(
                     e
-                  ) =>
-                    setCouponCode(
-                      e.target.value
-                    )
+                  ) => {
+                    setCouponCode(e.target.value);
+                    setCouponDiscount(0);
+                  }
                   }
                   placeholder="Enter coupon code"
                 />
+
+                <button type="button" onClick={applyCoupon} style={{ marginTop: "8px", padding: "9px 14px", borderRadius: "8px", border: "none", background: "#ffb347", color: "#111", fontWeight: "bold", cursor: "pointer" }}>
+                  Apply coupon
+                </button>
+                {couponDiscount > 0 && (
+                  <p style={{ color: "#69d36b", marginTop: "7px" }}>
+                    Coupon applied: −₹{couponDiscount.toFixed(0)}
+                  </p>
+                )}
 
               </div>
 

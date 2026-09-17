@@ -32,6 +32,16 @@ const staffSchema = new mongoose.Schema(
       default: true,
     },
 
+    creditPoints: {
+      type: Number,
+      default: 0,
+    },
+
+    onlineAt: {
+      type: Date,
+      default: null,
+    },
+
     // ==========================================
     // WAITER ACTIVE TASKS
     // ==========================================

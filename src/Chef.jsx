@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -302,6 +302,9 @@ export default function Chef() {
 
   const [currentTime, setCurrentTime] =
     useState(new Date());
+  const [creditPoints, setCreditPoints] = useState(0);
+  const [creditChange, setCreditChange] = useState(null);
+  const previousCreditPoints = useRef(null);
 
   const currentStaffId =
     localStorage.getItem("staffId");
@@ -310,6 +313,9 @@ export default function Chef() {
     localStorage.getItem("staffName");
 
   const handleLogout = () => {
+    if (currentStaffId) {
+      fetch(`/api/staff/${currentStaffId}/logout`, { method: "PATCH", keepalive: true });
+    }
     localStorage.removeItem("adminAuth");
     localStorage.removeItem("userRole");
     localStorage.removeItem("staffId");
@@ -327,6 +333,31 @@ export default function Chef() {
       navigate("/staff-login");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (!currentStaffId) return undefined;
+    const loadCredits = async () => {
+      const response = await fetch(`/api/staff/${currentStaffId}/credits`);
+      if (response.ok) {
+        const data = await response.json();
+        const nextPoints = data.creditPoints || 0;
+        if (previousCreditPoints.current !== null && nextPoints !== previousCreditPoints.current) {
+          setCreditChange(nextPoints - previousCreditPoints.current);
+        }
+        previousCreditPoints.current = nextPoints;
+        setCreditPoints(nextPoints);
+      }
+    };
+    loadCredits();
+    const interval = setInterval(loadCredits, 5000);
+    return () => clearInterval(interval);
+  }, [currentStaffId]);
+
+  useEffect(() => {
+    if (creditChange === null) return undefined;
+    const timer = setTimeout(() => setCreditChange(null), 1800);
+    return () => clearTimeout(timer);
+  }, [creditChange]);
 
   /*
     Live clock for the header.
@@ -924,17 +955,22 @@ export default function Chef() {
             </h1>
           </div>
 
-          <div className="chef-time">
-            <FaClock />
-
-            <div>
-              <h3>
-                {currentTime.toLocaleTimeString()}
-              </h3>
-
-              <p>
-                Live Kitchen
-              </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className={`chef-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
+              <span style={{ color: "#ffcc4d", fontWeight: 800 }}>★ {creditPoints}</span>
+              {creditChange !== null && (
+                <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
+                  {creditChange > 0 ? `+${creditChange}` : creditChange}
+                </span>
+              )}
+              <div><p>Credit Points</p></div>
+            </div>
+            <div className="chef-time">
+              <FaClock />
+              <div>
+                <h3>{currentTime.toLocaleTimeString()}</h3>
+                <p>Live Kitchen</p>
+              </div>
             </div>
           </div>
         </div>
