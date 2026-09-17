@@ -1,20 +1,220 @@
 import express from "express";
 import mongoose from "mongoose";
+
 import Order from "../models/Order.js";
-import Staff from "../models/Staff.js";
 import AssistanceRequest from "../models/AssistanceRequest.js";
 
 const router = express.Router();
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const normalizeRole = (role) =>
+  String(role || "").trim().toLowerCase();
+
 /*
-  CREATE ORDER
-  POST /api/orders
+   IMPORTANT:
+   ONLY Water Bottle and Coke are waiter-service items.
+
+   Normal beverages such as:
+   Fresh Watermelon Juice
+   Milkshake
+   Coffee
+   etc.
+   remain FOOD and go to the Chef.
 */
+const isServiceItem = (item) => {
+  if (String(item?.serviceType || "").toUpperCase() === "SERVICE") {
+    return true;
+  }
+
+  const name = String(item?.name || "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    name === "WATER BOTTLE" ||
+    name === "COKE" ||
+    name === "COCA COLA"
+  );
+};
+
+/*
+   Convert every possible Cart value into:
+   NOW
+   FIRST
+   LAST
+*/
+const normalizeServicePreference = (item) => {
+  const rawService = String(
+    item?.servicePreference || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  const rawPreference = String(
+    item?.preference || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  const raw = rawService || rawPreference;
+
+  if (
+    raw === "FIRST" ||
+    raw.includes("FIRST") ||
+    raw.includes("1ST")
+  ) {
+    return "FIRST";
+  }
+
+  if (
+    raw === "LAST" ||
+    raw.includes("LAST")
+  ) {
+    return "LAST";
+  }
+
+  return "NOW";
+};
+
+const isFood = (item) => !isServiceItem(item);
+
+const getWaiterTaskGroup = (order, item) => {
+  const preference = normalizeServicePreference(item);
+
+  // A NOW service item is always independent. This also repairs legacy
+  // orders whose stored group was created before the preference changed.
+  if (!isFood(item) && preference === "NOW") {
+    return `SERVICE_${String(item._id)}`;
+  }
+
+  if (item.waiterTaskGroup) {
+    return String(item.waiterTaskGroup);
+  }
+
+  const foods = (order.items || []).filter(isFood);
+
+  if (!isFood(item) && preference === "FIRST" && foods[0]) {
+    return `FOOD_${String(foods[0]._id)}`;
+  }
+
+  if (!isFood(item) && preference === "LAST" && foods.at(-1)) {
+    return `FOOD_${String(foods.at(-1)._id)}`;
+  }
+
+  return isFood(item)
+    ? `FOOD_${String(item._id)}`
+    : `SERVICE_${String(item._id)}`;
+};
+
+/* =========================================================
+   OVERALL ORDER STATUS
+========================================================= */
+
+const updateOverallOrderStatus = (order) => {
+  const items = order.items || [];
+
+  if (items.length === 0) {
+    order.status = "NEW";
+    return;
+  }
+
+  const foodItems = items.filter(isFood);
+
+  const allServed = items.every(
+    (item) => item.status === "SERVED"
+  );
+
+  if (allServed) {
+    order.status = "SERVED";
+    return;
+  }
+
+  if (foodItems.length > 0) {
+    // Kitchen work takes precedence in the order summary. Serving the
+    // first ready group must not make an order leave PREPARING while later
+    // food items are still being cooked.
+    const anyFoodPreparing = foodItems.some(
+      (item) => item.status === "PREPARING"
+    );
+
+    if (anyFoodPreparing) {
+      order.status = "PREPARING";
+      return;
+    }
+
+    const allFoodReady = foodItems.every(
+      (item) =>
+        item.status === "READY" ||
+        item.status === "SERVED"
+    );
+
+    if (allFoodReady) {
+      order.status = "READY";
+      return;
+    }
+
+  }
+
+  const anyOnTheWay = items.some(
+    (item) => item.status === "ON_THE_WAY"
+  );
+
+  if (anyOnTheWay) {
+    order.status = "ON_THE_WAY";
+    return;
+  }
+
+  order.status = "NEW";
+};
+
+/* =========================================================
+   WAITER ACTIVE TASK COUNT
+========================================================= */
+
+const getActiveWaiterTaskCount = async (staffId) => {
+  const orders = await Order.find({
+    items: {
+      $elemMatch: {
+        waiterId: staffId,
+        status: "ON_THE_WAY",
+      },
+    },
+  }).select("items");
+
+  const activeGroups = new Set();
+
+  orders.forEach((order) => {
+    order.items.forEach((item) => {
+      if (
+        item.status === "ON_THE_WAY" &&
+        String(item.waiterId || "") === String(staffId)
+      ) {
+        activeGroups.add(
+          `${order._id}:${getWaiterTaskGroup(order, item)}`
+        );
+      }
+    });
+  });
+
+  const activeAssistance =
+    await AssistanceRequest.countDocuments({
+      status: "ACCEPTED",
+      acceptedById: staffId,
+    });
+
+  return activeGroups.size + activeAssistance;
+};
+
+/* =========================================================
+   CREATE ORDER
+   POST /api/orders
+========================================================= */
+
 router.post("/", async (req, res) => {
   try {
-    console.log("🔥 CREATE ORDER ROUTE IS RUNNING");
-    console.log("🔥 ORDER BODY:", req.body);
-
     const {
       customerName,
       items,
@@ -24,66 +224,433 @@ router.post("/", async (req, res) => {
       amountPaid,
       paidAt,
       tableNumber,
+      couponCode,
       chefDescription,
       waiterDescription,
     } = req.body;
-    if (!items || items.length === 0) {
+
+    console.log("=================================");
+    console.log("CREATE ORDER");
+    console.log("RAW ITEMS:");
+    console.log(JSON.stringify(items, null, 2));
+    console.log("=================================");
+
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Order must contain at least one item",
       });
     }
 
-    console.log("🔥 CREATING ORDER WITH STATUS NEW");
+    /*
+      -------------------------------------------------------
+      NORMALIZE ITEMS
+      -------------------------------------------------------
+    */
+
+    const rawNormalizedItems = items.map((item) => {
+      const service = isServiceItem(item);
+
+      const servicePreference = service
+        ? normalizeServicePreference(item)
+        : "";
+
+      return {
+        ...item,
+
+        quantity: Math.max(
+          1,
+          Number(item.quantity) || 1
+        ),
+
+        price: Number(item.price) || 0,
+
+        serviceType: service
+          ? "SERVICE"
+          : "FOOD",
+
+        servicePreference,
+
+        serviceGroup: service
+          ? servicePreference
+          : "",
+
+        waiterServiceTargetMinutes: service
+          ? 5
+          : 8,
+
+        /*
+          Keep original preference for display.
+        */
+        preference:
+          item.preference ||
+          (
+            service
+              ? servicePreference
+              : ""
+          ),
+      };
+    });
+
+    /*
+      -------------------------------------------------------
+      FOOD ITEMS ONLY
+      -------------------------------------------------------
+    */
+
+    const foodItems = rawNormalizedItems.filter(
+      (item) => item.serviceType === "FOOD"
+    );
+
+    /*
+      -------------------------------------------------------
+      SORT FOOD BY PREFERENCE
+      -------------------------------------------------------
+    */
+
+    foodItems.sort((a, b) => {
+      const getPreferenceNumber = (item) => {
+        const text = String(
+          item.preference || ""
+        ).toUpperCase();
+
+        const match = text.match(/\d+/);
+
+        return match
+          ? Number(match[0])
+          : 999;
+      };
+
+      return (
+        getPreferenceNumber(a) -
+        getPreferenceNumber(b)
+      );
+    });
+
+    /*
+      -------------------------------------------------------
+      CUSTOMER ESTIMATE
+      -------------------------------------------------------
+    */
+
+    let customerFirstMinutes = 0;
+    let customerLastMinutes = 0;
+
+    if (foodItems.length > 0) {
+      const firstQuantity = Math.max(
+        1,
+        Number(foodItems[0].quantity) || 1
+      );
+
+      const differentItems = foodItems.length;
+
+      const extraQuantityMinutes =
+        foodItems.reduce(
+          (total, item) => {
+            const quantity = Math.max(
+              1,
+              Number(item.quantity) || 1
+            );
+
+            return (
+              total +
+              (quantity - 1) * 5
+            );
+          },
+          0
+        );
+
+      customerFirstMinutes =
+        20 +
+        (firstQuantity - 1) * 5;
+
+      customerLastMinutes =
+        15 +
+        differentItems * 10 +
+        extraQuantityMinutes;
+    }
+
+    /*
+      -------------------------------------------------------
+      CHEF DEADLINE
+      -------------------------------------------------------
+    */
+
+    const chefDeadline =
+      foodItems.length > 0
+        ? Math.max(
+            20,
+            customerLastMinutes - 10
+          )
+        : 0;
+
+    /*
+      -------------------------------------------------------
+      CHEF TIMER DISTRIBUTION
+      -------------------------------------------------------
+    */
+
+    const foodCount = foodItems.length;
+
+    const step =
+      foodCount > 1
+        ? (chefDeadline - 20) /
+          (foodCount - 1)
+        : 0;
+
+    /*
+      -------------------------------------------------------
+      BUILD FINAL ITEMS
+
+      FOOD:
+        chef timers
+
+      SERVICE:
+        no chef timers
+    -------------------------------------------------------
+    */
+
+    let foodIndex = 0;
+
+    const getPersistentTaskGroup = (item, service) => {
+      if (!service) {
+        return `FOOD_GROUP_${foodItems.indexOf(item) + 1}`;
+      }
+
+      if (item.servicePreference === "FIRST" && foodItems[0]) {
+        return "FOOD_GROUP_1";
+      }
+
+      if (item.servicePreference === "LAST" && foodItems.length > 0) {
+        return `FOOD_GROUP_${foodItems.length}`;
+      }
+
+      // NOW items are independent waiter tasks, even when an order has
+      // multiple service items.
+      return `SERVICE_NOW_${rawNormalizedItems.indexOf(item) + 1}`;
+    };
+
+    const calculatedItems =
+      rawNormalizedItems.map((item) => {
+        const service =
+          item.serviceType === "SERVICE";
+
+        const waiterTaskGroup = getPersistentTaskGroup(item, service);
+
+        /*
+          SERVICE ITEM
+        */
+
+        if (service) {
+          return {
+            name: item.name,
+            category: item.category || "",
+            price: Number(item.price) || 0,
+            quantity: Math.max(
+              1,
+              Number(item.quantity) || 1
+            ),
+            image: item.image || "",
+
+            serviceType: "SERVICE",
+
+            servicePreference:
+              item.servicePreference,
+
+            serviceGroup:
+              item.servicePreference,
+
+            waiterTaskGroup,
+
+            waiterServiceTargetMinutes: 5,
+
+            preference:
+              item.preference || "",
+
+            customerFirstMinutes: 0,
+            customerLastMinutes: 0,
+
+            chefGreenMinutes: 0,
+            chefOrangeMinutes: 0,
+
+            status: "NEW",
+
+            acceptedAt: null,
+            readyAt: null,
+
+            chefId: null,
+            chefName: "",
+
+            waiterAssignedAt: null,
+            servedAt: null,
+
+            waiterId: null,
+            waiterName: "",
+          };
+        }
+
+        /*
+          FOOD ITEM
+        */
+
+        const index = foodIndex++;
+
+        let chefGreenMinutes;
+
+        if (foodCount === 1) {
+          chefGreenMinutes = 15;
+        } else {
+          const rawMinutes =
+            20 + index * step;
+
+          chefGreenMinutes =
+            Math.max(
+              20,
+              Math.floor(
+                rawMinutes / 5
+              ) * 5
+            );
+        }
+
+        const chefOrangeMinutes =
+          chefGreenMinutes + 5;
+
+        return {
+          name: item.name,
+          category: item.category || "",
+          price: Number(item.price) || 0,
+          quantity: Math.max(
+            1,
+            Number(item.quantity) || 1
+          ),
+          image: item.image || "",
+
+          serviceType: "FOOD",
+          servicePreference: "",
+          serviceGroup: "",
+
+          waiterTaskGroup,
+
+          waiterServiceTargetMinutes: 8,
+
+          preference:
+            item.preference || "",
+
+          customerFirstMinutes:
+            index === 0
+              ? customerFirstMinutes
+              : 0,
+
+          customerLastMinutes:
+            index === foodCount - 1
+              ? customerLastMinutes
+              : 0,
+
+          chefGreenMinutes,
+          chefOrangeMinutes,
+
+          status: "NEW",
+
+          acceptedAt: null,
+          readyAt: null,
+
+          chefId: null,
+          chefName: "",
+
+          waiterAssignedAt: null,
+          servedAt: null,
+
+          waiterId: null,
+          waiterName: "",
+        };
+      });
+
+    console.log(
+      "SERVICE ITEMS:",
+      calculatedItems
+        .filter(
+          (item) =>
+            item.serviceType === "SERVICE"
+        )
+        .map((item) => ({
+          name: item.name,
+          servicePreference:
+            item.servicePreference,
+        }))
+    );
+
+    console.log(
+      "CHEF ITEMS:",
+      calculatedItems
+        .filter(
+          (item) =>
+            item.serviceType === "FOOD"
+        )
+        .map((item) => ({
+          name: item.name,
+          preference: item.preference,
+          green: item.chefGreenMinutes,
+          orange: item.chefOrangeMinutes,
+        }))
+    );
+
+    /*
+      -------------------------------------------------------
+      CREATE ORDER
+      -------------------------------------------------------
+    */
 
     const order = await Order.create({
-      customerName,
+      customerName:
+        customerName || "Customer",
 
-      items: items.map((item) => ({
-        name: item.name,
-        category: item.category || "",
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image || "",
-      })),
+      tableNumber:
+        tableNumber || "",
 
-      totalAmount,
+      items: calculatedItems,
 
-      // =========================
-      // ORDER STATUS
-      // =========================
+      totalAmount:
+        Number(totalAmount) || 0,
+
+      customerEstimate: {
+        firstMinutes:
+          customerFirstMinutes,
+
+        lastMinutes:
+          customerLastMinutes,
+      },
 
       status: "NEW",
 
-      // =========================
-      // PAYMENT INFORMATION
-      // =========================
+      paymentStatus:
+        paymentStatus || "PAID",
 
-      paymentStatus: paymentStatus || "PAID",
-      paymentMethod: paymentMethod || "DEMO",
-      amountPaid: amountPaid ?? totalAmount,
-      paidAt: paidAt || new Date(),
+      paymentMethod:
+        paymentMethod || "DEMO",
 
-      // =========================
-      // TABLE
-      // =========================
+      amountPaid:
+        Number(amountPaid) || 0,
 
-      tableNumber,
+      paidAt: paidAt
+        ? new Date(paidAt)
+        : null,
 
-      chefDescription: chefDescription || "",
+      couponCode:
+        couponCode || "",
 
-      waiterDescription: waiterDescription || "",
+      chefDescription:
+        chefDescription || "",
 
-      // =========================
-      // STAFF
-      // =========================
+      waiterDescription:
+        waiterDescription || "",
 
       chef: {
         staffId: "",
         name: "",
         acceptedAt: null,
         readyAt: null,
-        targetMinutes: 15,
+        targetMinutes:
+          chefDeadline,
         performance: "",
       },
 
@@ -97,59 +664,72 @@ router.post("/", async (req, res) => {
       },
     });
 
-    console.log("ORDER CREATED:", order);
+    console.log(
+      "ORDER CREATED:",
+      order._id
+    );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Order created successfully",
+      message:
+        "Order created successfully",
       order,
     });
   } catch (error) {
-    console.error("Create order error:", error);
+    console.error(
+      "CREATE ORDER ERROR:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to create order",
+      message:
+        "Failed to create order",
       error: error.message,
     });
   }
 });
 
+/* =========================================================
+   GET ALL ORDERS
+========================================================= */
 
-/*
-  GET ALL ORDERS
-  GET /api/orders
-*/
 router.get("/", async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 });
+    const orders = await Order.find({})
+      .sort({
+        createdAt: -1,
+      });
 
-    res.json({
+    return res.json({
       success: true,
       orders,
     });
   } catch (error) {
-    console.error("Get orders error:", error);
+    console.error(
+      "GET ORDERS ERROR:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch orders",
+      message:
+        "Failed to fetch orders",
       error: error.message,
     });
   }
 });
 
+/* =========================================================
+   GET SINGLE ORDER
+========================================================= */
 
-/*
-  GET ONE ORDER
-  GET /api/orders/:id
-*/
 router.get("/:id", async (req, res) => {
   try {
-    const order = await Order.findById(
-      req.params.id
-    );
+    const order =
+      await Order.findById(
+        req.params.id
+      );
 
     if (!order) {
       return res.status(404).json({
@@ -158,28 +738,31 @@ router.get("/:id", async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       order,
     });
   } catch (error) {
-    console.error("Get order error:", error);
-
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch order",
+      message:
+        "Failed to fetch order",
       error: error.message,
     });
   }
 });
 
-/*
-  UPDATE ORDER STATUS
-  PATCH /api/orders/:id/status
-*/
+/* =========================================================
+   CHEF ACCEPT ORDER
+
+   PATCH /api/orders/:id/status
+
+   PREPARING
+========================================================= */
 
 router.patch("/:id/status", async (req, res) => {
-  const session = await mongoose.startSession();
+  const session =
+    await mongoose.startSession();
 
   try {
     const {
@@ -189,992 +772,206 @@ router.patch("/:id/status", async (req, res) => {
       staffRole,
     } = req.body;
 
-    const normalizedStaffRole =
-      String(staffRole || "")
-        .trim()
-        .toLowerCase();
-
-    const allowedStatuses = [
-      "NEW",
-      "PREPARING",
-      "READY",
-      "ON_THE_WAY",
-      "SERVED",
-    ];
-
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order status",
-      });
-    }
+    const role =
+      normalizeRole(staffRole);
 
     /*
-      ==================================================
-      CHEF ACCEPT ORDER
-      ==================================================
-
-      Rules:
-
-      1. Order must still be NEW.
-      2. Order must be one of the oldest 5 NEW orders.
-      3. Chef must have fewer than 2 PREPARING orders.
-      4. Order must not already belong to another chef.
-      5. Successful chef gets ownership of the order.
+      -------------------------------------------------------
+      CHEF ACCEPT
+      -------------------------------------------------------
     */
 
     if (
-      normalizedStaffRole === "chef" &&
+      role === "chef" &&
       status === "PREPARING"
     ) {
       if (!staffId) {
         return res.status(400).json({
           success: false,
-          message: "Chef identity is required",
+          message:
+            "Chef identity is required",
         });
       }
 
-      await session.withTransaction(async () => {
-
-        /*
-          --------------------------------------------
-          STEP 1: CHECK CHEF'S CURRENT PREPARING COUNT
-          --------------------------------------------
-        */
-
-        const preparingCount =
-          await Order.countDocuments({
-            status: "PREPARING",
-            "chef.staffId": staffId,
-          }).session(session);
-
-        if (preparingCount >= 2) {
-          const error = new Error(
-            "You already have 2 orders in preparation"
-          );
-
-          error.statusCode = 409;
-
-          throw error;
-        }
-
-        /*
-          --------------------------------------------
-          STEP 2: GET OLDEST 5 NEW ORDERS
-          --------------------------------------------
-        */
-
-        const oldestFive =
-          await Order.find({
-            status: "NEW",
-          })
-            .sort({
-              createdAt: 1,
-              _id: 1,
-            })
-            .limit(5)
-            .session(session);
-
-        /*
-          --------------------------------------------
-          STEP 3: CHECK WHETHER THIS ORDER IS
-                  INSIDE THE FIFO TOP 5
-          --------------------------------------------
-        */
-
-        const requestedOrderId =
-          String(req.params.id);
-
-        const isInFifoQueue =
-          oldestFive.some(
-            (order) =>
-              String(order._id) ===
-              requestedOrderId
-          );
-
-        if (!isInFifoQueue) {
-          const error = new Error(
-            "This order is outside the oldest 5 FIFO queue"
-          );
-
-          error.statusCode = 409;
-
-          throw error;
-        }
-
-        /*
-          --------------------------------------------
-          STEP 4: CLAIM THE ORDER ATOMICALLY
-          --------------------------------------------
-        */
-
-        const now = new Date();
-
-        const claimedOrder =
-          await Order.findOneAndUpdate(
-            {
-              _id: req.params.id,
-
-              // Order must still be NEW
-              status: "NEW",
-
-              // Nobody else should own it
-              $or: [
-                {
-                  "chef.staffId": "",
-                },
-                {
-                  "chef.staffId": null,
-                },
-                {
-                  "chef.staffId": {
-                    $exists: false,
-                  },
-                },
-              ],
+      const preparingCount =
+        await Order.countDocuments({
+          items: {
+            $elemMatch: {
+              chefId: staffId,
+              status: "PREPARING",
             },
-            {
-              $set: {
-                status: "PREPARING",
+          },
+        });
 
-                "chef.staffId":
-                  staffId,
-
-                "chef.name":
-                  staffName || "",
-
-                "chef.acceptedAt":
-                  now,
-
-                "chef.readyAt":
-                  null,
-
-                "chef.performance":
-                  "",
-              },
-            },
-            {
-              new: true,
-              session,
-            }
-          );
-
-        if (!claimedOrder) {
-          const error = new Error(
-            "This order was already accepted by another chef"
-          );
-
-          error.statusCode = 409;
-
-          throw error;
-        }
-
-        /*
-          --------------------------------------------
-          SAVE SUCCESS RESULT
-          --------------------------------------------
-        */
-
-        req.claimedOrder =
-          claimedOrder;
-      });
-
-      console.log(
-        "CHEF ACCEPTED ORDER:",
-        req.claimedOrder._id,
-        "Chef:",
-        staffName,
-        "Chef ID:",
-        staffId
-      );
-
-      return res.json({
-        success: true,
-        message: "Order accepted successfully",
-        order: req.claimedOrder,
-      });
-    }
-
-
-    /*
-      ==================================================
-      CHEF MARK READY
-      ==================================================
-    */
-
-    if (
-      staffRole === "chef" &&
-      status === "READY"
-    ) {
-      if (!staffId) {
-        return res.status(400).json({
+      if (preparingCount >= 2) {
+        return res.status(409).json({
           success: false,
-          message: "Chef identity is required",
+          message:
+            "You already have 2 active orders.",
+        });
+      }
+
+      const topFive =
+        await Order.find({
+          status: "NEW",
+        })
+          .sort({
+            createdAt: 1,
+            _id: 1,
+          })
+          .limit(5)
+          .select("_id");
+
+      const allowed =
+        topFive.some(
+          (item) =>
+            String(item._id) ===
+            String(req.params.id)
+        );
+
+      if (!allowed) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "This order is not currently in the top 5 NEW orders.",
         });
       }
 
       const now = new Date();
 
-      const order =
-        await Order.findOneAndUpdate(
-          {
-            _id: req.params.id,
-
-            // Must still be preparing
-            status: "PREPARING",
-
-            // Only the chef who owns it can finish it
-            "chef.staffId": staffId,
-          },
-          {
-            $set: {
-              status: "READY",
-
-              "chef.readyAt":
-                now,
-            },
-          },
-          {
-            new: true,
-          }
-        );
-
-      if (!order) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This order is not assigned to you or is no longer preparing",
-        });
-      }
-
-      console.log(
-        "CHEF MARKED READY:",
-        order._id,
-        "Chef:",
-        staffName,
-        "Chef ID:",
-        staffId
-      );
-
-      return res.json({
-        success: true,
-        message: "Order marked as ready",
-        order,
-      });
-    }
-
-
-    /*
-      ==================================================
-      WAITER ACCEPT ORDER
-      ==================================================
-    
-      RULES:
-    
-      1. Waiter must have a valid identity.
-      2. Waiter can have only ONE active task.
-      3. The active task can be an ORDER or ASSISTANCE.
-      4. Only the top 3 READY orders can be accepted.
-      5. Waiter task is locked atomically using Staff.waiterTask.
-    */
-
-    if (
-      normalizedStaffRole === "waiter" &&
-      status === "ON_THE_WAY"
-    ) {
-      if (!staffId) {
-        return res.status(400).json({
-          success: false,
-          message: "Waiter identity is required",
-        });
-      }
-
-      try {
-        /*
-          ==================================================
-          STEP 1: CHECK WAITER CURRENT TASK
-          ==================================================
-        */
-
-        const waiter =
-          await Staff.findOne({
-            _id: staffId,
-            role: "WAITER",
-            active: true,
-          });
-
-        if (!waiter) {
-          return res.status(404).json({
-            success: false,
-            message: "Waiter not found or inactive",
-          });
-        }
-
-        /*
-          --------------------------------------------------
-          NO CURRENT TASK
-          --------------------------------------------------
-        */
-
-        if (!waiter.waiterTask) {
-          const lockedWaiter =
-            await Staff.findOneAndUpdate(
+      await session.withTransaction(
+        async () => {
+          const claimedOrder =
+            await Order.findOneAndUpdate(
               {
-                _id: staffId,
-                role: "WAITER",
-                active: true,
+                _id: req.params.id,
+                status: "NEW",
+
                 $or: [
-                  { waiterTask: "" },
-                  { waiterTask: null },
-                  { waiterTask: { $exists: false } },
+                  {
+                    "chef.staffId": "",
+                  },
+                  {
+                    "chef.staffId": null,
+                  },
+                  {
+                    "chef.staffId": {
+                      $exists: false,
+                    },
+                  },
                 ],
               },
               {
                 $set: {
-                  waiterTask: "ORDER",
+                  status: "PREPARING",
+
+                  "chef.staffId":
+                    staffId,
+
+                  "chef.name":
+                    staffName || "",
+
+                  "chef.acceptedAt":
+                    now,
+
+                  "chef.readyAt":
+                    null,
                 },
               },
               {
                 new: true,
+                session,
               }
             );
 
-          if (!lockedWaiter) {
-            return res.status(409).json({
-              success: false,
-              message:
-                "You already have an active task. Complete it before accepting another order.",
-            });
-          }
-        }
-
-        /*
-          ==================================================
-          CURRENT TASK = ASSISTANCE
-          ==================================================
-      
-          Assistance blocks the waiter for 5 minutes.
-      
-          After 5 minutes:
-          - waiter may accept an order
-          - assistance remains visible until 8 minutes
-        */
-
-        else if (
-          waiter.waiterTask === "ASSISTANCE"
-        ) {
-          const assistance =
-            await mongoose.model(
-              "AssistanceRequest"
-            ).findOne({
-              status: "ACCEPTED",
-              acceptedById: staffId,
-            });
-
-          /*
-            ------------------------------------------------
-            NO ACTIVE ASSISTANCE FOUND
-            ------------------------------------------------
-          */
-
-          if (!assistance) {
-            const unlockedWaiter =
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  waiterTask: "ASSISTANCE",
-                },
-                {
-                  $set: {
-                    waiterTask: "",
-                  },
-                },
-                {
-                  new: true,
-                }
+          if (!claimedOrder) {
+            const error =
+              new Error(
+                "This order was already accepted by another chef."
               );
 
-            if (!unlockedWaiter) {
-              return res.status(409).json({
-                success: false,
-                message:
-                  "Unable to update waiter task",
-              });
-            }
+            error.statusCode = 409;
 
-            /*
-              Try to claim the waiter again.
-            */
-
-            const lockedWaiter =
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  role: "WAITER",
-                  active: true,
-                  waiterTask: "",
-                },
-                {
-                  $set: {
-                    waiterTask: "ORDER",
-                  },
-                },
-                {
-                  new: true,
-                }
-              );
-
-            if (!lockedWaiter) {
-              return res.status(409).json({
-                success: false,
-                message:
-                  "You already have an active task.",
-              });
-            }
-          } else {
-            /*
-              ------------------------------------------------
-              CHECK 5-MINUTE RULE
-              ------------------------------------------------
-            */
-
-            const acceptedAt =
-              assistance.acceptedAt
-                ? new Date(
-                  assistance.acceptedAt
-                ).getTime()
-                : 0;
-
-            const elapsed =
-              Date.now() - acceptedAt;
-
-            const fiveMinutes =
-              5 * 60 * 1000;
-
-            if (elapsed < fiveMinutes) {
-              return res.status(409).json({
-                success: false,
-                message:
-                  "You must complete 5 minutes of assistance before accepting an order.",
-              });
-            }
-
-            /*
-              ------------------------------------------------
-              5 MINUTES PASSED
-              ------------------------------------------------
-      
-              The waiter can now switch from:
-      
-              ASSISTANCE → ORDER
-      
-              The assistance request itself remains
-              ACCEPTED and visible until 8 minutes.
-            */
-
-            const switchedWaiter =
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  role: "WAITER",
-                  active: true,
-                  waiterTask: "ASSISTANCE",
-                },
-                {
-                  $set: {
-                    waiterTask: "ORDER",
-                  },
-                },
-                {
-                  new: true,
-                }
-              );
-
-            if (!switchedWaiter) {
-              return res.status(409).json({
-                success: false,
-                message:
-                  "You already have another active task.",
-              });
-            }
-          }
-        }
-
-        /*
-          ==================================================
-          CURRENT TASK = ORDER
-          ==================================================
-        */
-
-        else if (
-          waiter.waiterTask === "ORDER"
-        ) {
-          /*
-            ==================================================
-            VERIFY THAT THE WAITER REALLY OWNS AN ACTIVE ORDER
-            ==================================================
-        
-            waiterTask can become stale if the browser/server was
-            closed or an older order was removed/changed.
-        
-            Only block the waiter if an actual ON_THE_WAY order
-            belongs to this waiter.
-          */
-
-          const activeOrder = await Order.findOne({
-            status: "ON_THE_WAY",
-            "waiter.staffId": staffId,
-          });
-
-          if (activeOrder) {
-            return res.status(409).json({
-              success: false,
-              message:
-                "You already have an accepted order. Serve it before accepting another order.",
-            });
+            throw error;
           }
 
           /*
-            No real active order exists.
-        
-            Therefore the ORDER task is stale.
-            Automatically clear it.
+            START ALL FOOD TIMERS.
+
+            SERVICE ITEMS DO NOT START
+            CHEF TIMERS.
           */
 
-          console.log(
-            "CLEARING STALE WAITER ORDER TASK:",
-            staffId
-          );
-
-          await Staff.findOneAndUpdate(
-            {
-              _id: staffId,
-              role: "WAITER",
-              active: true,
-              waiterTask: "ORDER",
-            },
-            {
-              $set: {
-                waiterTask: "",
-              },
-            }
-          );
-
-          /*
-            Continue normally.
-            The waiter is now considered free.
-          */
-        }
-
-        /*
-          ==================================================
-          STEP 2: GET TOP 3 READY ORDERS
-          ==================================================
-        */
-
-        const topThreeReadyOrders =
-          await Order.find({
-            status: "READY",
-          })
-            .sort({
-              "chef.readyAt": 1,
-              createdAt: 1,
-              _id: 1,
-            })
-            .limit(3);
-
-        const requestedOrderId =
-          String(req.params.id);
-
-        const isTopThree =
-          topThreeReadyOrders.some(
-            (readyOrder) =>
-              String(readyOrder._id) ===
-              requestedOrderId
-          );
-
-        if (!isTopThree) {
-          /*
-            If we changed the waiter from ASSISTANCE
-            to ORDER but the requested order is not
-            top 3, restore the assistance task.
-          */
-
-          const currentWaiter =
-            await Staff.findOne({
-              _id: staffId,
-            });
-
-          if (
-            currentWaiter &&
-            currentWaiter.waiterTask === "ORDER"
-          ) {
-            const assistance =
-              await mongoose.model(
-                "AssistanceRequest"
-              ).findOne({
-                status: "ACCEPTED",
-                acceptedById: staffId,
-              });
-
-            if (assistance) {
-              const acceptedAt =
-                new Date(
-                  assistance.acceptedAt
-                ).getTime();
-
-              const elapsed =
-                Date.now() - acceptedAt;
-
+          claimedOrder.items.forEach(
+            (item) => {
               if (
-                elapsed <
-                8 * 60 * 1000
+                item.serviceType ===
+                "SERVICE"
               ) {
-                await Staff.findOneAndUpdate(
-                  {
-                    _id: staffId,
-                    waiterTask: "ORDER",
-                  },
-                  {
-                    $set: {
-                      waiterTask: "ASSISTANCE",
-                    },
-                  }
-                );
-              } else {
-                await Staff.findOneAndUpdate(
-                  {
-                    _id: staffId,
-                    waiterTask: "ORDER",
-                  },
-                  {
-                    $set: {
-                      waiterTask: "",
-                    },
-                  }
-                );
+                return;
               }
-            } else {
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  waiterTask: "ORDER",
-                },
-                {
-                  $set: {
-                    waiterTask: "",
-                  },
-                }
-              );
-            }
-          }
 
-          return res.status(409).json({
-            success: false,
-            message:
-              "This order is not currently in the top 3 READY orders.",
-          });
-        }
+              item.status =
+                "PREPARING";
 
-        /*
-          ==================================================
-          STEP 3: CLAIM READY ORDER
-          ==================================================
-        */
+              item.acceptedAt =
+                now;
 
-        const now = new Date();
+              item.readyAt =
+                null;
 
-        const order =
-          await Order.findOneAndUpdate(
-            {
-              _id: req.params.id,
+              item.chefId =
+                staffId;
 
-              status: "READY",
-
-              $or: [
-                {
-                  "waiter.staffId": "",
-                },
-                {
-                  "waiter.staffId": null,
-                },
-                {
-                  "waiter.staffId": {
-                    $exists: false,
-                  },
-                },
-              ],
-            },
-            {
-              $set: {
-                status: "ON_THE_WAY",
-
-                "waiter.staffId":
-                  staffId,
-
-                "waiter.name":
-                  staffName || "",
-
-                "waiter.assignedAt":
-                  now,
-
-                "waiter.servedAt":
-                  null,
-              },
-            },
-            {
-              new: true,
+              item.chefName =
+                staffName || "";
             }
           );
 
-        /*
-          ==================================================
-          CLAIM FAILED
-          ==================================================
-        */
-
-        if (!order) {
-          /*
-            We obtained the ORDER lock but failed to
-            claim the actual order.
-      
-            Check whether the waiter still has an
-            accepted assistance request.
-          */
-
-          const assistance =
-            await mongoose.model(
-              "AssistanceRequest"
-            ).findOne({
-              status: "ACCEPTED",
-              acceptedById: staffId,
-            });
-
-          if (assistance) {
-            const acceptedAt =
-              new Date(
-                assistance.acceptedAt
-              ).getTime();
-
-            const elapsed =
-              Date.now() - acceptedAt;
-
-            if (
-              elapsed <
-              8 * 60 * 1000
-            ) {
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  waiterTask: "ORDER",
-                },
-                {
-                  $set: {
-                    waiterTask: "ASSISTANCE",
-                  },
-                }
-              );
-            } else {
-              await Staff.findOneAndUpdate(
-                {
-                  _id: staffId,
-                  waiterTask: "ORDER",
-                },
-                {
-                  $set: {
-                    waiterTask: "",
-                  },
-                }
-              );
-            }
-          } else {
-            await Staff.findOneAndUpdate(
-              {
-                _id: staffId,
-                waiterTask: "ORDER",
-              },
-              {
-                $set: {
-                  waiterTask: "",
-                },
-              }
-            );
-          }
-
-          return res.status(409).json({
-            success: false,
-            message:
-              "This order was already assigned to another waiter or is no longer ready",
+          await claimedOrder.save({
+            session,
           });
+
+          req.claimedOrder =
+            claimedOrder;
         }
-
-        /*
-          ==================================================
-          SUCCESS
-          ==================================================
-        */
-
-        console.log(
-          "WAITER ACCEPTED ORDER:",
-          order._id,
-          "Waiter:",
-          staffName,
-          "Waiter ID:",
-          staffId
-        );
-
-        return res.json({
-          success: true,
-          message:
-            "Order assigned to waiter successfully",
-          order,
-        });
-      } catch (error) {
-        console.error(
-          "Waiter accept order error:",
-          error
-        );
-
-        const statusCode =
-          error.statusCode || 500;
-
-        return res.status(statusCode).json({
-          success: false,
-          message:
-            error.message ||
-            "Failed to accept order",
-        });
-      }
-    }
-
-    /*
-      ==================================================
-      WAITER MARK SERVED
-      ==================================================
-    */
-
-    if (
-      normalizedStaffRole === "waiter" &&
-      status === "SERVED"
-    ) {
-      if (!staffId) {
-        return res.status(400).json({
-          success: false,
-          message: "Waiter identity is required",
-        });
-      }
-
-      /*
-        --------------------------------------------------
-        ONLY THE WAITER WHO OWNS THE ORDER
-        CAN MARK IT AS SERVED
-        --------------------------------------------------
-      */
-
-      const now = new Date();
-
-      const order =
-        await Order.findOneAndUpdate(
-          {
-            _id: req.params.id,
-
-            // Order must still be on the way
-            status: "ON_THE_WAY",
-
-            // Current waiter MUST own the order
-            "waiter.staffId": staffId,
-          },
-
-          {
-            $set: {
-              status: "SERVED",
-
-              "waiter.servedAt":
-                now,
-            },
-          },
-
-          {
-            new: true,
-          }
-        );
-
-      /*
-        --------------------------------------------------
-        OWNERSHIP CHECK FAILED
-        --------------------------------------------------
-      */
-
-      if (!order) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "You cannot serve this order because it is assigned to another waiter or is no longer on the way",
-        });
-      }
-      // ==================================================
-      // RELEASE WAITER ORDER LOCK
-      // ==================================================
-
-      const releasedWaiter =
-        await Staff.findOneAndUpdate(
-          {
-            _id: staffId,
-            waiterTask: "ORDER",
-          },
-          {
-            $set: {
-              waiterTask: "",
-            },
-          },
-          {
-            new: true,
-          }
-        );
-
-      if (!releasedWaiter) {
-        console.error(
-          "WARNING: Order was served but waiter task could not be released"
-        );
-      }
-
-      console.log(
-        "WAITER MARKED SERVED:",
-        order._id,
-        "Waiter:",
-        staffName,
-        "Waiter ID:",
-        staffId
       );
 
       return res.json({
         success: true,
         message:
-          "Order marked as served",
-        order,
+          "Order accepted by chef",
+        order:
+          req.claimedOrder,
       });
     }
 
-
     /*
-      ==================================================
-      SECURITY: SERVED CAN ONLY BE DONE BY OWNER
-      ==================================================
+      Whole-order READY is disabled.
     */
 
-    if (status === "SERVED") {
-      return res.status(403).json({
+    if (
+      role === "chef" &&
+      status === "READY"
+    ) {
+      return res.status(400).json({
         success: false,
         message:
-          "Only the assigned waiter can mark this order as served",
+          "Chef must mark food items READY individually.",
       });
     }
 
     /*
-      ==================================================
-      OTHER STATUS UPDATES
-      ==================================================
+      Waiter must use item endpoint.
     */
+
+    if (role === "waiter") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Waiter must handle individual items.",
+      });
+    }
 
     const order =
       await Order.findById(
@@ -1192,52 +989,242 @@ router.patch("/:id/status", async (req, res) => {
 
     await order.save();
 
-    console.log(
-      "ORDER UPDATED:",
-      order._id,
-      status,
-      staffRole,
-      staffName
-    );
-
     return res.json({
       success: true,
       message:
         "Order status updated",
       order,
     });
-
   } catch (error) {
-
     console.error(
-      "Update order status error:",
+      "UPDATE ORDER STATUS ERROR:",
       error
     );
 
-    const statusCode =
-      error.statusCode || 500;
-
-    return res.status(statusCode).json({
+    return res.status(
+      error.statusCode || 500
+    ).json({
       success: false,
       message:
         error.message ||
         "Failed to update order status",
     });
-
   } finally {
     await session.endSession();
   }
 });
 
-/*
-  UPDATE INDIVIDUAL ITEM STATUS
+/* =========================================================
+   WAITER TASK GROUP STATUS
 
-  PATCH /api/orders/:orderId/items/:itemId/status
+   A group is the unit a waiter claims and serves. This keeps a food
+   item and its FIRST/LAST service items in the same task, timestamp,
+   and capacity slot.
+========================================================= */
 
-  Used by:
-  Chef   → PREPARING / READY
-  Waiter → ON_THE_WAY / SERVED
-*/
+router.patch(
+  "/:orderId/waiter-groups/:groupId/status",
+  async (req, res) => {
+    try {
+      const { status, staffId, staffName, staffRole } = req.body;
+
+      if (normalizeRole(staffRole) !== "waiter") {
+        return res.status(403).json({
+          success: false,
+          message: "Only waiters can update waiter task groups.",
+        });
+      }
+
+      if (!staffId) {
+        return res.status(400).json({
+          success: false,
+          message: "Waiter identity is required",
+        });
+      }
+
+      if (!["ON_THE_WAY", "SERVED"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Waiter task groups can only be started or served.",
+        });
+      }
+
+      const order = await Order.findById(req.params.orderId);
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      const groupId = decodeURIComponent(req.params.groupId);
+      let groupItems = order.items.filter(
+        (item) => getWaiterTaskGroup(order, item) === groupId
+      );
+
+      // Legacy documents can contain a stale persisted `waiterTaskGroup`.
+      // A serve-now service task is intentionally represented by the item's
+      // ID in the UI (`SERVICE_<itemId>`), so resolve that item directly when
+      // the stored legacy group does not match the calculated value.
+      if (groupItems.length === 0 && groupId.startsWith("SERVICE_")) {
+        const serviceItemId = groupId.slice("SERVICE_".length);
+        const serviceItem = order.items.find(
+          (item) =>
+            !isFood(item) && String(item._id) === serviceItemId
+        );
+
+        if (serviceItem) {
+          groupItems = [serviceItem];
+        }
+      }
+
+      if (groupItems.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Waiter task group not found",
+        });
+      }
+
+      const now = new Date();
+
+      if (status === "ON_THE_WAY") {
+        const invalidFood = groupItems.find(
+          (item) => isFood(item) && item.status !== "READY"
+        );
+
+        if (invalidFood) {
+          return res.status(409).json({
+            success: false,
+            message: `Food item "${invalidFood.name}" is not ready yet.`,
+          });
+        }
+
+        const foodItems = order.items.filter(isFood);
+        const unavailableService = groupItems.find((item) => {
+          if (isFood(item) || item.status !== "NEW") return false;
+
+          const preference = String(
+            item.servicePreference || item.serviceGroup || "NOW"
+          ).toUpperCase();
+          const relatedFood = preference === "FIRST"
+            ? foodItems[0]
+            : preference === "LAST"
+              ? foodItems.at(-1)
+              : null;
+
+          return relatedFood && !["READY", "ON_THE_WAY", "SERVED"].includes(relatedFood.status);
+        });
+
+        if (unavailableService) {
+          return res.status(409).json({
+            success: false,
+            message: `Service item "${unavailableService.name}" is not available yet.`,
+          });
+        }
+
+        const alreadyClaimed = groupItems.some(
+          (item) => item.status === "ON_THE_WAY"
+        );
+
+        if (alreadyClaimed) {
+          return res.status(409).json({
+            success: false,
+            message: "This waiter task is already active.",
+          });
+        }
+
+        const activeCount = await getActiveWaiterTaskCount(staffId);
+        if (activeCount >= 2) {
+          return res.status(409).json({
+            success: false,
+            message: "You already have 2 active waiter tasks. Complete one first.",
+          });
+        }
+
+        groupItems.forEach((item) => {
+          item.status = "ON_THE_WAY";
+          item.waiterAssignedAt = now;
+          item.waiterId = staffId;
+          item.waiterName = staffName || "";
+        });
+
+        order.waiter.staffId = staffId;
+        order.waiter.name = staffName || "";
+        order.waiter.assignedAt = order.waiter.assignedAt || now;
+        updateOverallOrderStatus(order);
+        await order.save();
+
+        return res.json({
+          success: true,
+          message: "Waiter task group assigned",
+          order,
+          groupId,
+        });
+      }
+
+      const unclaimedItem = groupItems.find(
+        (item) => item.status !== "ON_THE_WAY"
+      );
+      if (unclaimedItem) {
+        return res.status(409).json({
+          success: false,
+          message: "Every item in this waiter task must be on the way before serving.",
+        });
+      }
+
+      const ownedByAnotherWaiter = groupItems.find(
+        (item) => item.waiterId && String(item.waiterId) !== String(staffId)
+      );
+      if (ownedByAnotherWaiter) {
+        return res.status(403).json({
+          success: false,
+          message: "This waiter task belongs to another waiter.",
+        });
+      }
+
+      groupItems.forEach((item) => {
+        item.status = "SERVED";
+        item.servedAt = now;
+        item.waiterId = staffId;
+        item.waiterName = staffName || item.waiterName;
+      });
+
+      updateOverallOrderStatus(order);
+      if (order.items.every((item) => item.status === "SERVED")) {
+        order.waiter.servedAt = now;
+      }
+      await order.save();
+
+      return res.json({
+        success: true,
+        message: "Waiter task group marked as served",
+        order,
+        groupId,
+      });
+    } catch (error) {
+      console.error("UPDATE WAITER TASK GROUP ERROR:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update waiter task group",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/* =========================================================
+   INDIVIDUAL ITEM STATUS
+
+   PATCH
+   /api/orders/:orderId/items/:itemId/status
+
+   CHEF:
+     PREPARING
+     READY
+
+   WAITER:
+     ON_THE_WAY
+     SERVED
+========================================================= */
+
 router.patch(
   "/:orderId/items/:itemId/status",
   async (req, res) => {
@@ -1249,178 +1236,490 @@ router.patch(
         staffRole,
       } = req.body;
 
-      const allowedStatuses = [
-        "NEW",
-        "PREPARING",
-        "READY",
-        "ON_THE_WAY",
-        "SERVED",
-      ];
+      const role =
+        normalizeRole(staffRole);
 
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid item status",
-        });
-      }
-
-      const order = await Order.findById(
-        req.params.orderId
-      );
+      const order =
+        await Order.findById(
+          req.params.orderId
+        );
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message:
+            "Order not found",
         });
       }
 
-      const item = order.items.id(
-        req.params.itemId
-      );
+      const item =
+        order.items.id(
+          req.params.itemId
+        );
 
       if (!item) {
         return res.status(404).json({
           success: false,
-          message: "Order item not found",
+          message:
+            "Order item not found",
         });
       }
 
       const now = new Date();
 
-      /*
-        =========================
-        CHEF
-        =========================
-      */
+      /* =====================================================
+         CHEF → PREPARING
+      ===================================================== */
 
       if (
-        staffRole === "chef" &&
+        role === "chef" &&
         status === "PREPARING"
       ) {
-        item.status = "PREPARING";
+        if (isServiceItem(item)) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Water/Coke are handled by the waiter.",
+          });
+        }
+
+        item.status =
+          "PREPARING";
 
         item.acceptedAt =
-          item.acceptedAt || now;
-
-        item.chefId = staffId || null;
-        item.chefName = staffName || "";
-      }
-
-      if (
-        staffRole === "chef" &&
-        status === "READY"
-      ) {
-        item.status = "READY";
-
-        item.acceptedAt =
-          item.acceptedAt || now;
-
-        item.readyAt = now;
+          item.acceptedAt ||
+          now;
 
         item.chefId =
-          staffId || item.chefId;
+          staffId ||
+          item.chefId;
 
         item.chefName =
-          staffName || item.chefName;
+          staffName ||
+          item.chefName;
+
+        order.status =
+          "PREPARING";
+
+        await order.save();
+
+        return res.json({
+          success: true,
+          message:
+            "Food item is preparing",
+          order,
+          item,
+        });
       }
 
-      /*
-        =========================
-        WAITER
-        =========================
-      */
+      /* =====================================================
+         CHEF → READY
+
+         STRICT SEQUENTIAL ORDER
+      ===================================================== */
 
       if (
-        staffRole === "waiter" &&
-        status === "ON_THE_WAY"
+        role === "chef" &&
+        status === "READY"
       ) {
-        item.status = "ON_THE_WAY";
+        if (
+          item.serviceType ===
+          "SERVICE"
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Water/Coke are handled by the waiter.",
+          });
+        }
 
-        item.waiterAssignedAt =
-          item.waiterAssignedAt || now;
+        const selectedIndex =
+          order.items.findIndex(
+            (orderItem) =>
+              String(
+                orderItem._id
+              ) ===
+              String(
+                req.params.itemId
+              )
+          );
 
-        item.waiterId = staffId || null;
-        item.waiterName = staffName || "";
-      }
+        const foodItems = order.items.filter(isFood);
 
-      if (
-        staffRole === "waiter" &&
-        status === "SERVED"
-      ) {
-        item.status = "SERVED";
+        const foodIndex =
+          foodItems.findIndex(
+            (foodItem) =>
+              String(
+                foodItem._id
+              ) ===
+              String(
+                req.params.itemId
+              )
+          );
 
-        item.waiterAssignedAt =
-          item.waiterAssignedAt || now;
+        /*
+          First food item can become READY.
 
-        item.servedAt = now;
+          Every later food item requires
+          all previous food items READY.
+        */
 
-        item.waiterId =
-          staffId || item.waiterId;
+        if (foodIndex > 0) {
+          const previousFood =
+            foodItems
+              .slice(0, foodIndex)
+              .find(
+                (previous) =>
+                  previous.status !==
+                    "READY" &&
+                  previous.status !==
+                    "SERVED"
+              );
 
-        item.waiterName =
-          staffName || item.waiterName;
-      }
+          if (previousFood) {
+            return res.status(409).json({
+              success: false,
+              message:
+                `Please finish "${previousFood.name}" first.`,
+            });
+          }
+        }
 
-      /*
-        =========================
-        UPDATE OVERALL ORDER STATUS
-        =========================
-      */
+        if (selectedIndex === -1) {
+          return res.status(404).json({
+            success: false,
+            message:
+              "Order item not found",
+          });
+        }
 
-      const itemStatuses =
-        order.items.map(
-          (orderItem) => orderItem.status
+        if (!["PREPARING", "NEW"].includes(item.status)) {
+          return res.status(409).json({
+            success: false,
+            message: `Food item "${item.name}" is already ${item.status.replaceAll("_", " ")}.`,
+          });
+        }
+
+        item.status =
+          "READY";
+
+        item.acceptedAt =
+          item.acceptedAt ||
+          now;
+
+        item.readyAt =
+          now;
+
+        item.chefId =
+          staffId ||
+          item.chefId;
+
+        item.chefName =
+          staffName ||
+          item.chefName;
+
+        updateOverallOrderStatus(
+          order
         );
 
-      if (
-        itemStatuses.every(
-          (s) => s === "SERVED"
-        )
-      ) {
-        order.status = "SERVED";
-      } else if (
-        itemStatuses.some(
-          (s) => s === "ON_THE_WAY"
-        )
-      ) {
-        order.status = "ON_THE_WAY";
-      } else if (
-        itemStatuses.some(
-          (s) => s === "READY"
-        )
-      ) {
-        order.status = "READY";
-      } else if (
-        itemStatuses.some(
-          (s) => s === "PREPARING"
-        )
-      ) {
-        order.status = "PREPARING";
-      } else {
-        order.status = "NEW";
+        const allFoodReady =
+          foodItems.length > 0 &&
+          foodItems.every(
+            (foodItem) =>
+              foodItem.status ===
+                "READY" ||
+              foodItem.status ===
+                "SERVED"
+          );
+
+        if (allFoodReady) {
+          order.chef.readyAt =
+            now;
+        }
+
+        await order.save();
+
+        return res.json({
+          success: true,
+          message:
+            "Food item marked READY",
+          order,
+          item,
+        });
       }
 
-      order.updatedAt = now;
+      /* =====================================================
+         WAITER → ON THE WAY
+      ===================================================== */
 
-      await order.save();
+      if (
+        role === "waiter" &&
+        status === "ON_THE_WAY"
+      ) {
+        if (!staffId) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Waiter identity is required",
+          });
+        }
 
-      res.json({
-        success: true,
-        message: "Item status updated successfully",
-        order,
-        item,
+        /*
+          FOOD:
+          must already be READY.
+        */
+
+        if (
+          item.serviceType !==
+            "SERVICE" &&
+          item.status !==
+            "READY"
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              "This food item is not ready yet.",
+          });
+        }
+
+        /*
+          SERVICE:
+          NOW  → immediately
+          FIRST → first food ready
+          LAST  → last food ready
+        */
+
+        if (
+          item.serviceType ===
+          "SERVICE"
+        ) {
+          const preference =
+            String(
+              item.servicePreference ||
+              item.serviceGroup ||
+              normalizeServicePreference(
+                item
+              )
+            )
+              .trim()
+              .toUpperCase();
+
+          const foodItems =
+            order.items.filter(
+              (foodItem) =>
+                foodItem.serviceType !==
+                "SERVICE"
+            );
+
+          if (
+            preference ===
+            "FIRST"
+          ) {
+            const firstFood =
+              foodItems[0];
+
+            if (
+              !firstFood ||
+              ![
+                "READY",
+                "ON_THE_WAY",
+                "SERVED",
+              ].includes(
+                firstFood.status
+              )
+            ) {
+              return res.status(409).json({
+                success: false,
+                message:
+                  "This service item is waiting for the first food preference.",
+              });
+            }
+          }
+
+          if (
+            preference ===
+            "LAST"
+          ) {
+            const lastFood =
+              foodItems[
+                foodItems.length - 1
+              ];
+
+            if (
+              !lastFood ||
+              ![
+                "READY",
+                "ON_THE_WAY",
+                "SERVED",
+              ].includes(
+                lastFood.status
+              )
+            ) {
+              return res.status(409).json({
+                success: false,
+                message:
+                  "This service item is waiting for the last food preference.",
+              });
+            }
+          }
+        }
+
+        /*
+          MAXIMUM TWO ACTIVE TASKS
+        */
+
+        const activeCount =
+          await getActiveWaiterTaskCount(
+            staffId
+          );
+
+        if (activeCount >= 2) {
+          return res.status(409).json({
+            success: false,
+            message:
+              "You already have 2 active waiter tasks. Complete one first.",
+          });
+        }
+
+        /*
+          START WAITER TIMER
+        */
+
+        item.status =
+          "ON_THE_WAY";
+
+        item.waiterAssignedAt =
+          now;
+
+        item.waiterId =
+          staffId;
+
+        item.waiterName =
+          staffName || "";
+
+        /*
+          Compatibility fields
+        */
+
+        order.waiter.staffId =
+          staffId;
+
+        order.waiter.name =
+          staffName || "";
+
+        order.waiter.assignedAt =
+          order.waiter.assignedAt ||
+          now;
+
+        updateOverallOrderStatus(
+          order
+        );
+
+        await order.save();
+
+        return res.json({
+          success: true,
+          message:
+            "Item assigned to waiter",
+          order,
+          item,
+        });
+      }
+
+      /* =====================================================
+         WAITER → SERVED
+      ===================================================== */
+
+      if (
+        role === "waiter" &&
+        status === "SERVED"
+      ) {
+        if (!staffId) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Waiter identity is required",
+          });
+        }
+
+        if (
+          item.status !==
+          "ON_THE_WAY"
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              "This item is not currently being served.",
+          });
+        }
+
+        if (
+          item.waiterId &&
+          String(item.waiterId) !==
+            String(staffId)
+        ) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "This item belongs to another waiter.",
+          });
+        }
+
+        item.status =
+          "SERVED";
+
+        item.servedAt =
+          now;
+
+        item.waiterId =
+          staffId;
+
+        item.waiterName =
+          staffName ||
+          item.waiterName;
+
+        updateOverallOrderStatus(
+          order
+        );
+
+        const allServed =
+          order.items.every(
+            (orderItem) =>
+              orderItem.status ===
+              "SERVED"
+          );
+
+        if (allServed) {
+          order.waiter.servedAt =
+            now;
+        }
+
+        await order.save();
+
+        return res.json({
+          success: true,
+          message:
+            "Item marked as served",
+          order,
+          item,
+        });
+      }
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "This staff role cannot perform this item status update.",
       });
-
     } catch (error) {
       console.error(
-        "Update item status error:",
+        "UPDATE ITEM STATUS ERROR:",
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: "Failed to update item status",
+        message:
+          "Failed to update item status",
         error: error.message,
       });
     }

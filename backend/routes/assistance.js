@@ -4,441 +4,574 @@ import Staff from "../models/Staff.js";
 
 const router = express.Router();
 
-/*
-  ==================================================
-  CREATE ASSISTANCE REQUEST
-  POST /api/assistance
-  ==================================================
-*/
-
-router.post("/", async (req, res) => {
-    try {
-        const { customerName, tableNumber } = req.body;
-
-        if (!customerName || !customerName.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: "Customer name is required",
-            });
-        }
-
-        if (!tableNumber) {
-            return res.status(400).json({
-                success: false,
-                message: "Table number is required",
-            });
-        }
-
-        const validTables = Array.from(
-            { length: 30 },
-            (_, i) => String(i + 1)
-        );
-
-        if (!validTables.includes(String(tableNumber))) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid table number",
-            });
-        }
-
-        const request = await AssistanceRequest.create({
-            customerName: customerName.trim(),
-            tableNumber: String(tableNumber),
-            status: "ACTIVE",
-            requestedAt: new Date(),
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: "Waiter assistance requested",
-            request,
-        });
-    } catch (error) {
-        console.error(
-            "Create assistance request error:",
-            error
-        );
-
-        return res.status(500).json({
-            success: false,
-            message: "Failed to create assistance request",
-        });
-    }
-});
-
 
 /*
-  ==================================================
-  GET ASSISTANCE REQUESTS
-  GET /api/assistance
-  GET /api/assistance?status=ACTIVE
-  ==================================================
+==================================================
+GET ALL ASSISTANCE REQUESTS
+GET /api/assistance
+==================================================
 */
 
 router.get("/", async (req, res) => {
-    try {
-        const { status } = req.query;
-
-        const filter = {};
-
-        if (status) {
-            filter.status =
-                String(status).toUpperCase();
-        }
-
-        const requests =
-            await AssistanceRequest.find(filter)
-                .sort({
-                    requestedAt: -1,
-                    _id: -1,
-                })
-                .lean();
-
-        /*
-          --------------------------------------------------
-          REMOVE ACCEPTED ASSISTANCE AFTER 8 MINUTES
-          --------------------------------------------------
-        */
-
-        const now = Date.now();
-
-        const visibleRequests =
-            requests.filter((request) => {
-                if (
-                    request.status !== "ACCEPTED" ||
-                    !request.acceptedAt
-                ) {
-                    return true;
-                }
-
-                const acceptedTime =
-                    new Date(
-                        request.acceptedAt
-                    ).getTime();
-
-                const elapsed =
-                    now - acceptedTime;
-
-                // 8 minutes
-                const eightMinutes =
-                    8 * 60 * 1000;
-
-                return elapsed < eightMinutes;
-            });
-
-        return res.json({
-            success: true,
-            requests: visibleRequests,
+  try {
+    const requests =
+      await AssistanceRequest.find()
+        .sort({
+          createdAt: -1,
         });
-    } catch (error) {
-        console.error(
-            "Get assistance requests error:",
-            error
-        );
 
-        return res.status(500).json({
-            success: false,
-            message: "Failed to fetch assistance requests",
-        });
-    }
+    return res.json({
+      success: true,
+      requests,
+    });
+
+  } catch (error) {
+    console.error(
+      "Get assistance requests error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch assistance requests",
+      error:
+        error.message,
+    });
+  }
 });
 
 
 /*
-  ==================================================
-  ACCEPT ASSISTANCE REQUEST
-  PATCH /api/assistance/:id/accept
-  ==================================================
-
-  RULES:
-
-  1. Only a waiter can accept.
-  2. Waiter must be active.
-  3. Waiter can only have one task.
-  4. Assistance becomes the waiter's task.
-  5. The 5-minute waiting period starts here.
+==================================================
+CREATE ASSISTANCE REQUEST
+POST /api/assistance
+==================================================
 */
 
-router.patch("/:id/accept", async (req, res) => {
-    try {
-        const { id } = req.params;
+router.post("/", async (req, res) => {
+  try {
 
-        const {
-            staffId,
-            staffName,
-            staffRole,
-        } = req.body;
+    const {
+      customerName,
+      tableNumber,
+      message,
+    } = req.body;
 
-        const normalizedRole =
-            String(staffRole || "")
-                .trim()
-                .toLowerCase();
 
-        if (normalizedRole !== "waiter") {
-            return res.status(403).json({
-                success: false,
-                message:
-                    "Only waiters can accept assistance requests",
-            });
-        }
+    const request =
+      await AssistanceRequest.create({
+        customerName:
+          customerName || "Customer",
 
-        if (!staffId) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Waiter identity is required",
-            });
-        }
+        tableNumber:
+          tableNumber || "",
 
-        /*
-          --------------------------------------------------
-          STEP 1: ATOMICALLY LOCK WAITER
-          --------------------------------------------------
-        */
+        message:
+          message || "",
 
-        const waiter =
-            await Staff.findOneAndUpdate(
-                {
-                    _id: staffId,
-                    role: "WAITER",
-                    active: true,
+        status:
+          "ACTIVE",
 
-                    // Waiter must have no current task
-                    waiterTask: "",
-                },
-                {
-                    $set: {
-                        waiterTask: "ASSISTANCE",
-                    },
-                },
-                {
-                    new: true,
-                }
-            );
+        acceptedById:
+          null,
 
-        if (!waiter) {
-            return res.status(409).json({
-                success: false,
-                message:
-                    "You already have an active task. Complete it before accepting assistance.",
-            });
-        }
+        acceptedByName:
+          "",
 
-        /*
-          --------------------------------------------------
-          STEP 2: ACCEPT ASSISTANCE
-          --------------------------------------------------
-        */
+        acceptedAt:
+          null,
 
-        const now = new Date();
+        completedAt:
+          null,
+      });
 
-        const request =
-            await AssistanceRequest.findOneAndUpdate(
-                {
-                    _id: id,
 
-                    // Request must still be available
-                    status: "ACTIVE",
-                },
-                {
-                    $set: {
-                        status: "ACCEPTED",
+    return res.status(201).json({
+      success: true,
 
-                        acceptedAt: now,
+      message:
+        "Assistance request created",
 
-                        acceptedBy:
-                            staffName || staffId,
+      request,
+    });
 
-                        acceptedById:
-                            staffId,
-                    },
-                },
-                {
-                    new: true,
-                }
-            );
+  } catch (error) {
 
-        /*
-          --------------------------------------------------
-          ACCEPTANCE FAILED
-          --------------------------------------------------
-        */
+    console.error(
+      "Create assistance error:",
+      error
+    );
 
-        if (!request) {
-            /*
-              The waiter was locked above, so release the lock
-              because the assistance could not be accepted.
-            */
+    return res.status(500).json({
+      success: false,
 
-            await Staff.findOneAndUpdate(
-                {
-                    _id: staffId,
-                    waiterTask: "ASSISTANCE",
-                },
-                {
-                    $set: {
-                        waiterTask: "",
-                    },
-                }
-            );
+      message:
+        "Failed to create assistance request",
 
-            return res.status(409).json({
-                success: false,
-                message:
-                    "This assistance request was already accepted or completed.",
-            });
-        }
-
-        console.log(
-            "ASSISTANCE ACCEPTED:",
-            request._id,
-            "Waiter:",
-            staffName,
-            "Waiter ID:",
-            staffId
-        );
-
-        return res.json({
-            success: true,
-            message:
-                "Assistance request accepted",
-            request,
-        });
-    } catch (error) {
-        console.error(
-            "Accept assistance request error:",
-            error
-        );
-
-        return res.status(500).json({
-            success: false,
-            message:
-                "Failed to accept assistance request",
-        });
-    }
+      error:
+        error.message,
+    });
+  }
 });
 
 
 /*
-  ==================================================
-  COMPLETE ASSISTANCE REQUEST
-  PATCH /api/assistance/:id/complete
-  ==================================================
+==================================================
+ACCEPT ASSISTANCE
+PATCH /api/assistance/:id/accept
+==================================================
+
+RULES:
+
+1. Waiter must be active.
+2. Maximum 2 active waiter tasks.
+3. Assistance consumes ONE task slot.
+4. There is NO 5-minute restriction.
+5. Timer starts at acceptedAt.
+6. Timer target = 8 minutes.
+7. Assistance remains active until waiter
+   presses PROBLEM SORTED.
+==================================================
 */
 
 router.patch(
-    "/:id/complete",
-    async (req, res) => {
-        try {
-            const { id } = req.params;
+  "/:id/accept",
+  async (req, res) => {
 
-            const {
+    try {
+
+      const {
+        staffId,
+        staffName,
+        staffRole,
+      } = req.body;
+
+
+      if (
+        String(staffRole || "")
+          .trim()
+          .toLowerCase() !==
+        "waiter"
+      ) {
+        return res.status(403).json({
+          success: false,
+
+          message:
+            "Only waiters can accept assistance requests",
+        });
+      }
+
+
+      if (!staffId) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Waiter identity is required",
+        });
+      }
+
+
+      /*
+      --------------------------------------------------
+      VERIFY WAITER
+      --------------------------------------------------
+      */
+
+      const waiter =
+        await Staff.findOne({
+          _id: staffId,
+
+          role: "WAITER",
+
+          active: true,
+        });
+
+
+      if (!waiter) {
+        return res.status(404).json({
+          success: false,
+
+          message:
+            "Waiter not found or inactive",
+        });
+      }
+
+
+      /*
+      --------------------------------------------------
+      COUNT ACTIVE TASKS
+      --------------------------------------------------
+
+      We count:
+
+      FOOD
+      WATER
+      ASSISTANCE
+
+      together.
+
+      Maximum = 2.
+      --------------------------------------------------
+      */
+
+      const activeFoodWaterTasks =
+        await getActiveServiceTasks(
+          staffId
+        );
+
+
+      const activeAssistanceTasks =
+        await AssistanceRequest.countDocuments({
+          status: "ACCEPTED",
+
+          acceptedById:
+            staffId,
+        });
+
+
+      const activeTaskCount =
+        activeFoodWaterTasks +
+        activeAssistanceTasks;
+
+
+      if (
+        activeTaskCount >= 2
+      ) {
+        return res.status(409).json({
+          success: false,
+
+          message:
+            "You already have 2 active tasks. Finish one before accepting another.",
+        });
+      }
+
+
+      /*
+      --------------------------------------------------
+      ATOMIC CLAIM
+      --------------------------------------------------
+      */
+
+      const now =
+        new Date();
+
+
+      const request =
+        await AssistanceRequest.findOneAndUpdate(
+          {
+            _id:
+              req.params.id,
+
+            status:
+              "ACTIVE",
+          },
+
+          {
+            $set: {
+              status:
+                "ACCEPTED",
+
+              acceptedById:
                 staffId,
-                staffName,
-                staffRole,
-            } = req.body;
 
-            const normalizedRole =
-                String(staffRole || "")
-                    .trim()
-                    .toLowerCase();
+              acceptedByName:
+                staffName || "",
 
-            if (normalizedRole !== "waiter") {
-                return res.status(403).json({
-                    success: false,
-                    message:
-                        "Only waiters can complete assistance requests",
-                });
-            }
+              acceptedAt:
+                now,
 
-            if (!staffId) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Waiter identity is required",
-                });
-            }
+              completedAt:
+                null,
+            },
+          },
 
-            /*
-              --------------------------------------------------
-              ONLY THE WAITER WHO ACCEPTED IT CAN COMPLETE IT
-              --------------------------------------------------
-            */
+          {
+            new: true,
+          }
+        );
 
-            const request =
-                await AssistanceRequest.findOneAndUpdate(
-                    {
-                        _id: id,
 
-                        status: "ACCEPTED",
+      if (!request) {
+        return res.status(409).json({
+          success: false,
 
-                        acceptedBy:
-                            staffName || staffId,
-                    },
-                    {
-                        $set: {
-                            status: "COMPLETED",
+          message:
+            "This assistance request was already accepted or completed.",
+        });
+      }
 
-                            completedAt:
-                                new Date(),
 
-                            completedBy:
-                                staffName || staffId,
-                        },
-                    },
-                    {
-                        new: true,
-                    }
-                );
+      console.log(
+        "🔔 ASSISTANCE ACCEPTED:",
+        request._id,
 
-            if (!request) {
-                return res.status(404).json({
-                    success: false,
-                    message:
-                        "Assistance request not found, not accepted by you, or already completed",
-                });
-            }
+        "WAITER:",
+        staffName,
 
-            /*
-              --------------------------------------------------
-              RELEASE WAITER TASK
-              --------------------------------------------------
-            */
+        "START:",
+        now
+      );
 
-            await Staff.findOneAndUpdate(
-                {
-                    _id: staffId,
 
-                    // Only release an assistance task
-                    waiterTask: "ASSISTANCE",
-                },
-                {
-                    $set: {
-                        waiterTask: "",
-                    },
-                }
-            );
+      return res.json({
+        success: true,
 
-            return res.json({
-                success: true,
-                message:
-                    "Assistance request completed",
-                request,
-            });
-        } catch (error) {
-            console.error(
-                "Complete assistance request error:",
-                error
-            );
+        message:
+          "Assistance request accepted",
 
-            return res.status(500).json({
-                success: false,
-                message:
-                    "Failed to complete assistance request",
-            });
-        }
+        request,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Accept assistance error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to accept assistance request",
+
+        error:
+          error.message,
+      });
     }
+  }
 );
+
+
+/*
+==================================================
+COMPLETE ASSISTANCE
+PATCH /api/assistance/:id/complete
+==================================================
+
+BUTTON:
+
+    PROBLEM SORTED
+
+Timer stops when completed.
+
+IMPORTANT:
+
+It does NOT automatically disappear
+when 8 minutes passes.
+
+The waiter must explicitly complete it.
+==================================================
+*/
+
+router.patch(
+  "/:id/complete",
+  async (req, res) => {
+
+    try {
+
+      const {
+        staffId,
+        staffRole,
+      } = req.body;
+
+
+      if (
+        String(staffRole || "")
+          .trim()
+          .toLowerCase() !==
+        "waiter"
+      ) {
+        return res.status(403).json({
+          success: false,
+
+          message:
+            "Only waiters can complete assistance requests",
+        });
+      }
+
+
+      if (!staffId) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            "Waiter identity is required",
+        });
+      }
+
+
+      /*
+      --------------------------------------------------
+      COMPLETE ONLY IF THIS WAITER OWNS IT
+      --------------------------------------------------
+      */
+
+      const now =
+        new Date();
+
+
+      const request =
+        await AssistanceRequest.findOneAndUpdate(
+          {
+            _id:
+              req.params.id,
+
+            status:
+              "ACCEPTED",
+
+            acceptedById:
+              staffId,
+          },
+
+          {
+            $set: {
+              status:
+                "COMPLETED",
+
+              completedAt:
+                now,
+            },
+          },
+
+          {
+            new: true,
+          }
+        );
+
+
+      if (!request) {
+        return res.status(404).json({
+          success: false,
+
+          message:
+            "Active assistance request not found for this waiter.",
+        });
+      }
+
+
+      console.log(
+        "✅ ASSISTANCE COMPLETED:",
+        request._id,
+
+        "WAITER:",
+        staffId,
+
+        "COMPLETED:",
+        now
+      );
+
+
+      return res.json({
+        success: true,
+
+        message:
+          "Problem marked as sorted",
+
+        request,
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Complete assistance error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to complete assistance request",
+
+        error:
+          error.message,
+      });
+    }
+  }
+);
+
+
+/*
+==================================================
+HELPER
+==================================================
+
+Count active FOOD + WATER tasks belonging
+to a waiter.
+
+Food:
+    item.status = ON_THE_WAY
+
+Water/Coke:
+    same item-level system
+
+Assistance is counted separately.
+==================================================
+*/
+
+async function getActiveServiceTasks(
+  staffId
+) {
+
+  const orders =
+    await import(
+      "../models/Order.js"
+    ).then(
+      (module) =>
+        module.default.find({
+          "items.status":
+            "ON_THE_WAY",
+
+          "items.waiterId":
+            staffId,
+        }).select("items")
+    );
+
+
+  const activeGroups = new Set();
+
+
+  orders.forEach(
+    (order) => {
+
+      order.items.forEach(
+        (item) => {
+
+          if (
+            item.status ===
+              "ON_THE_WAY" &&
+
+            String(
+              item.waiterId || ""
+            ) ===
+              String(staffId)
+          ) {
+            const preference = String(
+              item.servicePreference || item.serviceGroup || ""
+            ).toUpperCase();
+
+            const groupId =
+              item.serviceType === "SERVICE" && preference === "NOW"
+                ? `SERVICE_${item._id}`
+                : item.waiterTaskGroup || item._id;
+
+            activeGroups.add(
+              `${order._id}:${groupId}`
+            );
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  return activeGroups.size;
+}
 
 
 export default router;

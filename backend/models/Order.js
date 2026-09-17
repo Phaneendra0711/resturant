@@ -1,21 +1,40 @@
 import mongoose from "mongoose";
 
+/*
+==================================================
+ORDER ITEM SCHEMA
+==================================================
+*/
+
 const orderItemSchema = new mongoose.Schema(
   {
+    /*
+    BASIC ITEM INFORMATION
+    */
+
     name: {
       type: String,
       required: true,
+      trim: true,
+    },
+
+    category: {
+      type: String,
+      default: "",
+      trim: true,
     },
 
     price: {
       type: Number,
       required: true,
+      min: 0,
     },
 
     quantity: {
       type: Number,
       required: true,
       min: 1,
+      default: 1,
     },
 
     image: {
@@ -23,25 +42,315 @@ const orderItemSchema = new mongoose.Schema(
       default: "",
     },
 
-    // Customer's food preference/instruction
-    preference: {
+    /*
+    ==================================================
+    ITEM TYPE
+    ==================================================
+
+    FOOD
+      → Chef prepares this item
+
+    SERVICE
+      → Waiter serves this item
+         Example:
+         Water Bottle
+         Coke
+    */
+
+    serviceType: {
       type: String,
+      enum: ["FOOD", "SERVICE"],
+      default: "FOOD",
+    },
+
+    /*
+    ==================================================
+    SERVICE PREFERENCE
+    ==================================================
+
+    Only meaningful for SERVICE items.
+
+    NOW
+      → Serve immediately
+
+    FIRST
+      → Serve together with first food preference
+
+    LAST
+      → Serve together with last food preference
+    */
+
+    servicePreference: {
+      type: String,
+      enum: ["NOW", "FIRST", "LAST", ""],
       default: "",
     },
 
-    // Customer-side estimated preparation time
-    estimatedMinutes: {
-      type: Number,
-      default: 25,
+    /*
+    ==================================================
+    SERVICE GROUP
+    ==================================================
+
+    This tells the waiter which food item
+    the service item belongs with.
+
+    NOW
+      → separate service task
+
+    FIRST
+      → grouped with first food preference
+
+    LAST
+      → grouped with last food preference
+    */
+
+    serviceGroup: {
+      type: String,
+      enum: ["NOW", "FIRST", "LAST", ""],
+      default: "",
     },
 
-    // Chef's working estimation
-    chefEstimatedMinutes: {
+    // Persistent waiter task identity. A food item and every service
+    // item delivered with it share this value and are one waiter task.
+    waiterTaskGroup: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    /*
+    ==================================================
+    WAITER SERVICE TIMER
+    ==================================================
+
+    Food service:
+      8 minutes
+
+    Water / Coke:
+      5 minutes
+    */
+
+    waiterServiceTargetMinutes: {
+      type: Number,
+      default: 8,
+    },
+
+    /*
+    ==================================================
+    CUSTOMER PREFERENCE
+    ==================================================
+    */
+
+    preference: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    /*
+    ==================================================
+    CUSTOMER ESTIMATION
+    ==================================================
+    */
+
+    customerFirstMinutes: {
+      type: Number,
+      default: 0,
+    },
+
+    customerLastMinutes: {
+      type: Number,
+      default: 0,
+    },
+
+    /*
+    ==================================================
+    CHEF TIMER
+    ==================================================
+
+    These values are used only for FOOD items.
+
+    Example:
+
+    chefGreenMinutes = 20
+    chefOrangeMinutes = 25
+
+    Green:
+      until 15 minutes
+
+    Orange:
+      final 5 minutes
+
+    Red:
+      after target
+    */
+
+    chefGreenMinutes: {
       type: Number,
       default: 15,
     },
 
-    // Individual item tracking
+    chefOrangeMinutes: {
+      type: Number,
+      default: 20,
+    },
+
+    /*
+    ==================================================
+    CHEF TIMESTAMPS
+    ==================================================
+    */
+
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
+
+    readyAt: {
+      type: Date,
+      default: null,
+    },
+
+    chefId: {
+      type: String,
+      default: null,
+    },
+
+    chefName: {
+      type: String,
+      default: "",
+    },
+
+    /*
+    ==================================================
+    WAITER TIMESTAMPS
+    ==================================================
+    */
+
+    waiterAssignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    servedAt: {
+      type: Date,
+      default: null,
+    },
+
+    waiterId: {
+      type: String,
+      default: null,
+    },
+
+    waiterName: {
+      type: String,
+      default: "",
+    },
+
+    /*
+    ==================================================
+    ITEM STATUS
+    ==================================================
+    */
+
+    status: {
+      type: String,
+      enum: [
+        "NEW",
+        "PREPARING",
+        "READY",
+        "ON_THE_WAY",
+        "SERVED",
+      ],
+      default: "NEW",
+    },
+  },
+  {
+    _id: true,
+  }
+);
+
+
+/*
+==================================================
+ORDER SCHEMA
+==================================================
+*/
+
+const orderSchema = new mongoose.Schema(
+  {
+    /*
+    ==================================================
+    CUSTOMER
+    ==================================================
+    */
+
+    customerName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    tableNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    /*
+    ==================================================
+    ITEMS
+    ==================================================
+    */
+
+    items: {
+      type: [orderItemSchema],
+      required: true,
+      validate: {
+        validator: function (items) {
+          return items.length > 0;
+        },
+        message:
+          "Order must contain at least one item",
+      },
+    },
+
+    /*
+    ==================================================
+    TOTAL
+    ==================================================
+    */
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    /*
+    ==================================================
+    CUSTOMER ESTIMATE
+    ==================================================
+    */
+
+    customerEstimate: {
+      firstMinutes: {
+        type: Number,
+        default: 20,
+      },
+
+      lastMinutes: {
+        type: Number,
+        default: 25,
+      },
+    },
+
+    /*
+    ==================================================
+    OVERALL ORDER STATUS
+    ==================================================
+    */
+
     status: {
       type: String,
       enum: [
@@ -54,164 +363,153 @@ const orderItemSchema = new mongoose.Schema(
       default: "NEW",
     },
 
-    // Chef timing
-    acceptedAt: {
+    /*
+    ==================================================
+    PAYMENT
+    ==================================================
+    */
+
+    paymentStatus: {
+      type: String,
+      default: "PAID",
+    },
+
+    paymentMethod: {
+      type: String,
+      default: "DEMO",
+    },
+
+    amountPaid: {
+      type: Number,
+      default: 0,
+    },
+
+    paidAt: {
       type: Date,
       default: null,
     },
 
-    readyAt: {
-      type: Date,
-      default: null,
-    },
+    /*
+    ==================================================
+    COUPON
+    ==================================================
+    */
 
-    chefId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Staff",
-      default: null,
-    },
-
-    chefName: {
+    couponCode: {
       type: String,
       default: "",
+      trim: true,
     },
 
-    // Waiter timing
-    waiterAssignedAt: {
-      type: Date,
-      default: null,
-    },
+    /*
+    ==================================================
+    DESCRIPTIONS
+    ==================================================
+    */
 
-    servedAt: {
-      type: Date,
-      default: null,
-    },
-
-    waiterId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Staff",
-      default: null,
-    },
-
-    waiterName: {
+    chefDescription: {
       type: String,
       default: "",
+      trim: true,
+    },
+
+    waiterDescription: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    /*
+    ==================================================
+    CHEF COMPATIBILITY INFORMATION
+    ==================================================
+    */
+
+    chef: {
+      staffId: {
+        type: String,
+        default: "",
+      },
+
+      name: {
+        type: String,
+        default: "",
+      },
+
+      acceptedAt: {
+        type: Date,
+        default: null,
+      },
+
+      readyAt: {
+        type: Date,
+        default: null,
+      },
+
+      targetMinutes: {
+        type: Number,
+        default: 20,
+      },
+
+      performance: {
+        type: String,
+        default: "",
+      },
+    },
+
+    /*
+    ==================================================
+    WAITER COMPATIBILITY INFORMATION
+    ==================================================
+    */
+
+    waiter: {
+      staffId: {
+        type: String,
+        default: "",
+      },
+
+      name: {
+        type: String,
+        default: "",
+      },
+
+      assignedAt: {
+        type: Date,
+        default: null,
+      },
+
+      servedAt: {
+        type: Date,
+        default: null,
+      },
+
+      targetMinutes: {
+        type: Number,
+        default: 8,
+      },
+
+      performance: {
+        type: String,
+        default: "",
+      },
     },
   },
   {
-    _id: true,
+    timestamps: true,
   }
 );
 
-const orderSchema = new mongoose.Schema({
-  customerName: {
-    type: String,
-    required: true,
-  },
 
-  tableNumber: {
-    type: String,
-    required: true,
-  },
+/*
+==================================================
+MODEL
+==================================================
+*/
 
-  // Each item now has its own tracking
-  items: {
-    type: [orderItemSchema],
-    required: true,
-  },
-
-  totalAmount: {
-    type: Number,
-    required: true,
-  },
-
-  // Kept for compatibility with your existing system.
-  // Later we will make this represent the overall order status.
-  status: {
-    type: String,
-    enum: [
-      "NEW",
-      "PREPARING",
-      "READY",
-      "ON_THE_WAY",
-      "SERVED",
-    ],
-    default: "NEW",
-  },
-
-  // Kept for compatibility with existing code
-  chef: {
-    staffId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Staff",
-      default: null,
-    },
-    name: {
-      type: String,
-      default: "",
-    },
-    acceptedAt: {
-      type: Date,
-      default: null,
-    },
-    readyAt: {
-      type: Date,
-      default: null,
-    },
-  },
-
-  // Kept for compatibility with existing code
-  waiter: {
-    staffId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Staff",
-      default: null,
-    },
-    name: {
-      type: String,
-      default: "",
-    },
-    assignedAt: {
-      type: Date,
-      default: null,
-    },
-    servedAt: {
-      type: Date,
-      default: null,
-    },
-  },
-
-  paymentStatus: {
-    type: String,
-    default: "PENDING",
-  },
-
-  paymentMethod: {
-    type: String,
-    default: "",
-  },
-
-  amountPaid: {
-    type: Number,
-    default: 0,
-  },
-
-  paidAt: {
-    type: Date,
-    default: null,
-  },
-
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const Order = mongoose.model("Order", orderSchema);
+const Order = mongoose.model(
+  "Order",
+  orderSchema
+);
 
 export default Order;

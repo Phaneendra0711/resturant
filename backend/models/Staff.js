@@ -33,12 +33,35 @@ const staffSchema = new mongoose.Schema(
     },
 
     // ==========================================
-    // WAITER CURRENT TASK
+    // WAITER ACTIVE TASKS
     // ==========================================
-    waiterTask: {
-      type: String,
-      enum: ["", "ORDER", "ASSISTANCE"],
-      default: "",
+    //
+    // A waiter can have maximum 2 active tasks.
+    //
+    // Possible task types:
+    // ORDER
+    // ASSISTANCE
+    // WATER
+    //
+    waiterTasks: {
+      type: [
+        {
+          type: String,
+          enum: [
+            "ORDER",
+            "ASSISTANCE",
+            "WATER",
+          ],
+        },
+      ],
+      default: [],
+      validate: {
+        validator: function (tasks) {
+          return tasks.length <= 2;
+        },
+        message:
+          "A waiter can have maximum 2 active tasks",
+      },
     },
   },
   {

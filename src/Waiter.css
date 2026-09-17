@@ -7,21 +7,30 @@
 .waiter-page {
   min-height: 100vh;
   display: flex;
-  background: #050505;
-  color: white;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(216, 154, 43, 0.08), transparent 28%),
+    #050505;
+  color: #fff;
   font-family: "Poppins", sans-serif;
 }
 
-/* SIDEBAR */
+/* =========================================================
+   SIDEBAR
+========================================================= */
 
 .waiter-sidebar {
   width: 280px;
-  background: #0d0d0d;
-  border-right: 1px solid rgba(216, 154, 43, .2);
+  min-width: 280px;
+  min-height: 100vh;
+  background: rgba(13, 13, 13, 0.98);
+  border-right: 1px solid rgba(216, 154, 43, 0.18);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 25px;
+  padding: 24px 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
 }
 
 .waiter-logo-box {
@@ -30,61 +39,78 @@
 }
 
 .waiter-logo {
-  width: 160px;
-  height: 160px;
+  width: 145px;
+  height: 145px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 25px rgba(216, 154, 43, 0.12));
 }
 
 .waiter-menu {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
 }
 
 .waiter-menu-active,
 .waiter-menu-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+  gap: 12px;
+  min-height: 58px;
+  padding: 13px 15px;
   border-radius: 14px;
   cursor: pointer;
+  transition: 0.25s ease;
 }
 
 .waiter-menu-active {
   background:
-    linear-gradient(135deg,
-      rgba(216, 154, 43, .2),
-      rgba(216, 154, 43, .05));
-  border: 1px solid rgba(216, 154, 43, .25);
+    linear-gradient(
+      135deg,
+      rgba(216, 154, 43, 0.2),
+      rgba(216, 154, 43, 0.05)
+    );
+  border: 1px solid rgba(216, 154, 43, 0.28);
+  box-shadow: 0 8px 25px rgba(216, 154, 43, 0.06);
 }
 
 .waiter-menu-item {
   background: #141414;
+  border: 1px solid transparent;
+}
+
+.waiter-menu-item:hover {
+  background: #191919;
+  border-color: rgba(216, 154, 43, 0.16);
+  transform: translateX(3px);
 }
 
 .waiter-menu-active svg,
 .waiter-menu-item svg {
   color: #d89a2b;
   font-size: 20px;
+  flex-shrink: 0;
 }
 
 .waiter-menu-active span,
 .waiter-menu-item span {
   flex: 1;
-  margin-left: 12px;
+  margin-left: 2px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .waiter-badge,
 .waiter-badge-dark {
-  width: 32px;
-  height: 32px;
+  width: 31px;
+  height: 31px;
+  min-width: 31px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .waiter-badge {
@@ -93,52 +119,76 @@
 }
 
 .waiter-badge-dark {
-  background: #222;
+  background: #242424;
+  color: #aaa;
 }
 
-/* PROFILE */
+/* =========================================================
+   PROFILE
+========================================================= */
 
 .waiter-profile {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-top: 30px;
+  gap: 13px;
+  margin-top: 25px;
+  padding: 15px;
+  background: #111;
+  border: 1px solid rgba(216, 154, 43, 0.12);
+  border-radius: 16px;
 }
 
 .waiter-avatar {
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
   border-radius: 50%;
-  background: #d89a2b;
+  background: linear-gradient(135deg, #d89a2b, #a96f12);
+  color: #111;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 25px;
+  box-shadow: 0 6px 20px rgba(216, 154, 43, 0.18);
 }
 
 .waiter-profile h3 {
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .waiter-profile p {
-  color: #999;
-  font-size: 14px;
+  color: #888;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 .waiter-logout {
-  margin-top: 25px;
+  margin-top: 12px;
+  padding: 12px 15px;
   color: #ff5a5a;
   display: flex;
   align-items: center;
   gap: 10px;
+  border-radius: 12px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.25s ease;
 }
 
-/* MAIN */
+.waiter-logout:hover {
+  background: rgba(255, 90, 90, 0.08);
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
 
 .waiter-main {
   flex: 1;
-  padding: 35px;
+  min-width: 0;
+  padding: 32px 38px 45px;
   overflow-y: auto;
 }
 
@@ -146,206 +196,776 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 35px;
+  gap: 25px;
+  margin-bottom: 28px;
 }
 
 .waiter-welcome {
   color: #d89a2b;
-  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 
 .waiter-title {
-  font-size: 40px;
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.1;
   font-weight: 800;
+  letter-spacing: -1px;
 }
 
 .waiter-time {
+  min-width: 175px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 13px;
   background: #111;
-  padding: 18px 24px;
+  padding: 14px 19px;
   border-radius: 16px;
-  border: 1px solid rgba(216, 154, 43, .2);
+  border: 1px solid rgba(216, 154, 43, 0.18);
 }
 
 .waiter-time svg {
   color: #d89a2b;
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .waiter-time p {
-  color: #999;
-  font-size: 13px;
+  color: #777;
+  font-size: 11px;
+  margin-bottom: 2px;
 }
 
-/* STATS */
+.waiter-time strong {
+  font-size: 14px;
+}
+
+/* =========================================================
+   STATS
+========================================================= */
 
 .waiter-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 35px;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
 }
 
 .waiter-stat-card {
-  background: #111;
-  border: 1px solid rgba(216, 154, 43, .2);
-  border-radius: 20px;
-  padding: 25px;
+  min-height: 105px;
+  background: linear-gradient(145deg, #131313, #0d0d0d);
+  border: 1px solid rgba(216, 154, 43, 0.16);
+  border-radius: 18px;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
+  transition: 0.25s ease;
+}
+
+.waiter-stat-card:hover {
+  border-color: rgba(216, 154, 43, 0.3);
+  transform: translateY(-2px);
 }
 
 .waiter-stat-card svg {
-  font-size: 36px;
+  font-size: 30px;
   color: #d89a2b;
+  flex-shrink: 0;
 }
 
 .waiter-stat-card h2 {
-  font-size: 34px;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .waiter-stat-card p {
-  color: #aaa;
+  color: #888;
+  font-size: 12px;
+  margin-top: 6px;
 }
+
+/* =========================================================
+   ACTIVE TASK LIMIT
+========================================================= */
+
+.waiter-active-limit {
+  width: 100%;
+  margin-bottom: 22px;
+  padding: 17px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(216, 154, 43, 0.11),
+      rgba(216, 154, 43, 0.03)
+    );
+  border: 1px solid rgba(216, 154, 43, 0.2);
+  border-radius: 17px;
+}
+
+.waiter-active-limit-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.waiter-active-limit-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(216, 154, 43, 0.14);
+  color: #d89a2b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.waiter-active-limit-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.waiter-active-limit-subtitle {
+  color: #777;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.waiter-active-limit-count {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #171717;
+  border: 1px solid rgba(216, 154, 43, 0.2);
+  color: #d89a2b;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.waiter-active-limit-count.full {
+  color: #ff5a5a;
+  border-color: rgba(255, 90, 90, 0.25);
+  background: rgba(255, 90, 90, 0.06);
+}
+
+/* =========================================================
+   SECTION TITLE
+========================================================= */
 
 .waiter-section-title {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 25px;
+  font-size: 23px;
+  font-weight: 800;
+  margin-bottom: 18px;
   color: #d89a2b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* EMPTY STATE */
+/* =========================================================
+   EMPTY STATE
+========================================================= */
 
 .waiter-empty {
-  min-height: 400px;
+  min-height: 300px;
+  padding: 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: #111;
-  border-radius: 25px;
-  border: 1px solid rgba(216, 154, 43, .25);
+  text-align: center;
+  background: linear-gradient(145deg, #121212, #0d0d0d);
+  border-radius: 22px;
+  border: 1px solid rgba(216, 154, 43, 0.16);
 }
 
 .waiter-empty h1 {
   color: #d89a2b;
-  font-size: 42px;
-  margin-bottom: 12px;
+  font-size: 36px;
+  margin-bottom: 10px;
 }
 
 .waiter-empty p {
-  color: #bdbdbd;
-  font-size: 18px;
+  color: #777;
+  font-size: 14px;
 }
 
-/* ORDERS */
+/* =========================================================
+   ORDERS / TASK CARDS
+========================================================= */
 
 .waiter-orders {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .waiter-order-card {
-  background: #111;
-  border: 1px solid rgba(216, 154, 43, .25);
+  position: relative;
+  background:
+    linear-gradient(145deg, rgba(20, 20, 20, 0.98), rgba(12, 12, 12, 0.98));
+  border: 1px solid rgba(216, 154, 43, 0.16);
   border-radius: 20px;
-  padding: 25px;
+  padding: 21px;
+  overflow: hidden;
+  transition: 0.25s ease;
+}
+
+.waiter-order-card:hover {
+  border-color: rgba(216, 154, 43, 0.3);
+  transform: translateY(-2px);
+}
+
+.waiter-order-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #d89a2b;
+  opacity: 0.7;
 }
 
 .waiter-order-info h2 {
   color: #d89a2b;
-  margin-bottom: 10px;
+  font-size: 19px;
+  margin-bottom: 7px;
 }
 
 .waiter-order-info h3 {
-  margin-bottom: 8px;
+  font-size: 16px;
+  margin-bottom: 6px;
 }
 
 .waiter-order-info p {
-  color: #aaa;
+  color: #888;
+  font-size: 13px;
 }
 
+/* =========================================================
+   ORDER ITEMS
+========================================================= */
+
 .waiter-order-items {
-  margin-top: 20px;
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .waiter-order-items h4 {
+  color: #bbb;
+  font-size: 13px;
   margin-bottom: 10px;
 }
 
 .waiter-order-items ul {
-  padding-left: 20px;
+  padding-left: 18px;
 }
 
 .waiter-order-items li {
-  margin-bottom: 8px;
+  color: #aaa;
+  font-size: 13px;
+  margin-bottom: 6px;
 }
 
-/* BUTTONS */
+.waiter-order-items li strong {
+  color: #fff;
+}
+
+/* =========================================================
+   TASK TYPE BADGES
+========================================================= */
+
+.waiter-task-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  margin-bottom: 12px;
+}
+
+.waiter-task-badge.food {
+  background: rgba(216, 154, 43, 0.12);
+  color: #d89a2b;
+  border: 1px solid rgba(216, 154, 43, 0.2);
+}
+
+.waiter-task-badge.assistance {
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.waiter-task-badge.service {
+  background: rgba(80, 180, 255, 0.1);
+  color: #62bfff;
+  border: 1px solid rgba(80, 180, 255, 0.18);
+}
+
+/* =========================================================
+   TIMER CARDS
+========================================================= */
+
+.waiter-task-card {
+  position: relative;
+  background: #101010;
+  border: 1px solid rgba(216, 154, 43, 0.16);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+.waiter-task-card.active {
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+}
+
+.waiter-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 17px;
+}
+
+.waiter-task-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.waiter-task-meta {
+  color: #888;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.waiter-task-table {
+  color: #d89a2b;
+  font-weight: 700;
+}
+
+.waiter-task-timer {
+  min-width: 92px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #171717;
+  border: 1px solid rgba(216, 154, 43, 0.16);
+  text-align: center;
+}
+
+.waiter-task-timer-label {
+  display: block;
+  color: #777;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 3px;
+}
+
+.waiter-task-timer-value {
+  font-size: 18px;
+  font-weight: 900;
+  color: #65d88a;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiter-task-timer.late {
+  border-color: rgba(255, 75, 75, 0.3);
+  background: rgba(255, 75, 75, 0.06);
+}
+
+.waiter-task-timer.late .waiter-task-timer-value {
+  color: #ff5050;
+}
+
+/* =========================================================
+   CIRCULAR TIMER SUPPORT
+========================================================= */
+
+.waiter-timer-ring {
+  width: 112px;
+  height: 112px;
+  margin: 4px auto 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waiter-timer-ring svg {
+  width: 112px;
+  height: 112px;
+  transform: rotate(-90deg);
+}
+
+.waiter-timer-ring-bg {
+  fill: none;
+  stroke: #222;
+  stroke-width: 7;
+}
+
+.waiter-timer-ring-progress {
+  fill: none;
+  stroke: #62d987;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke 0.3s ease;
+}
+
+.waiter-timer-ring.late .waiter-timer-ring-progress {
+  stroke: #ff5050;
+}
+
+.waiter-timer-ring-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.waiter-timer-ring-content strong {
+  font-size: 19px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiter-timer-ring-content span {
+  color: #777;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   ASSISTANCE
+========================================================= */
+
+.waiter-assistance-card {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 193, 7, 0.08),
+      rgba(20, 20, 20, 0.98)
+    );
+  border: 1px solid rgba(255, 193, 7, 0.2);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+}
+
+.waiter-assistance-icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 13px;
+  background: rgba(255, 193, 7, 0.12);
+  color: #ffc107;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.waiter-assistance-message {
+  margin-top: 13px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 11px;
+  color: #bbb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .waiter-order-actions {
-  margin-top: 20px;
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.way-btn,
+.served-btn,
+.problem-btn,
+.service-btn {
+  min-height: 44px;
+  border: none;
+  padding: 11px 19px;
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  transition: 0.22s ease;
 }
 
 .way-btn {
   background: #d89a2b;
   color: #111;
-  border: none;
-  padding: 14px 22px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
 }
 
 .way-btn:hover {
-  opacity: .9;
+  background: #e7aa3a;
+  transform: translateY(-1px);
 }
 
 .served-btn {
   background: #2e8b57;
-  color: white;
-  border: none;
-  padding: 14px 22px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
+  color: #fff;
 }
 
 .served-btn:hover {
-  opacity: .9;
+  background: #37a467;
+  transform: translateY(-1px);
 }
 
-/* FOOTER */
+.problem-btn {
+  background: #ffc107;
+  color: #111;
+}
+
+.problem-btn:hover {
+  background: #ffd34f;
+  transform: translateY(-1px);
+}
+
+.service-btn {
+  background: #247cae;
+  color: #fff;
+}
+
+.service-btn:hover {
+  background: #3196cd;
+  transform: translateY(-1px);
+}
+
+.way-btn:disabled,
+.served-btn:disabled,
+.problem-btn:disabled,
+.service-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================================================
+   DISABLED / QUEUED TASK
+========================================================= */
+
+.waiter-task-disabled {
+  opacity: 0.55;
+}
+
+.waiter-queue-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #1c1c1c;
+  color: #777;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.waiter-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.waiter-status.ready {
+  color: #65d88a;
+  background: rgba(101, 216, 138, 0.08);
+  border: 1px solid rgba(101, 216, 138, 0.16);
+}
+
+.waiter-status.active {
+  color: #62bfff;
+  background: rgba(98, 191, 255, 0.08);
+  border: 1px solid rgba(98, 191, 255, 0.16);
+}
+
+.waiter-status.late {
+  color: #ff5050;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.16);
+}
+
+.waiter-status.completed {
+  color: #aaa;
+  background: #191919;
+  border: 1px solid #252525;
+}
+
+/* =========================================================
+   FOOTER
+========================================================= */
 
 .waiter-footer {
-  margin-top: 30px;
+  margin-top: 35px;
   display: flex;
   justify-content: space-between;
-  color: #888;
-  padding-bottom: 30px;
+  align-items: center;
+  gap: 15px;
+  color: #666;
+  font-size: 12px;
+  padding-bottom: 20px;
 }
 
-/* RESPONSIVE */
+/* =========================================================
+   SCROLLBAR
+========================================================= */
 
-@media(max-width:900px) {
+.waiter-main::-webkit-scrollbar {
+  width: 7px;
+}
 
+.waiter-main::-webkit-scrollbar-track {
+  background: #080808;
+}
+
+.waiter-main::-webkit-scrollbar-thumb {
+  background: #292929;
+  border-radius: 10px;
+}
+
+.waiter-main::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1200px) {
+  .waiter-sidebar {
+    width: 235px;
+    min-width: 235px;
+  }
+
+  .waiter-main {
+    padding: 28px;
+  }
+
+  .waiter-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
   .waiter-page {
     flex-direction: column;
   }
 
   .waiter-sidebar {
     width: 100%;
+    min-width: 100%;
+    min-height: auto;
+    height: auto;
+    position: relative;
+    padding: 18px;
+  }
+
+  .waiter-logo-box {
+    margin-bottom: 15px;
+  }
+
+  .waiter-logo {
+    width: 100px;
+    height: 100px;
+  }
+
+  .waiter-menu {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .waiter-profile {
+    margin-top: 18px;
+  }
+
+  .waiter-main {
+    padding: 25px 18px 35px;
   }
 
   .waiter-header {
     flex-direction: column;
-    gap: 20px;
     align-items: flex-start;
+    margin-bottom: 24px;
   }
 
+  .waiter-time {
+    width: 100%;
+  }
+
+  .waiter-active-limit {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .waiter-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .waiter-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .waiter-title {
+    font-size: 30px;
+  }
+
+  .waiter-order-card,
+  .waiter-task-card,
+  .waiter-assistance-card {
+    padding: 16px;
+  }
+
+  .waiter-task-header {
+    flex-direction: column;
+  }
+
+  .waiter-task-timer {
+    width: 100%;
+  }
+
+  .waiter-active-limit {
+    flex-direction: column;
+  }
+
+  .waiter-active-limit-count {
+    width: 100%;
+    text-align: center;
+  }
+
+  .waiter-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

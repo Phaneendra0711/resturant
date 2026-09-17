@@ -187,6 +187,84 @@ export default function Status() {
 
   };
 
+  const isServiceItem = (item) =>
+    String(item?.serviceType || "").toUpperCase() === "SERVICE" ||
+    ["WATER BOTTLE", "COKE", "COCA COLA"].includes(
+      String(item?.name || "").trim().toUpperCase()
+    );
+
+  const getServiceWaitingLabel = (item) => {
+    const preference = String(
+      item?.servicePreference || item?.serviceGroup || item?.preference || ""
+    ).toUpperCase();
+
+    if (preference.includes("FIRST") || preference.includes("1ST")) {
+      return "Waiting for 1st preference order";
+    }
+
+    if (preference.includes("LAST")) {
+      return "Waiting for last preference order";
+    }
+
+    return "Waiting for pickup";
+  };
+
+  const renderItemTracker = (item) => {
+    const service = isServiceItem(item);
+    const steps = service
+      ? [
+          { status: "NEW", title: getServiceWaitingLabel(item), subtitle: "Service" },
+          { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
+          { status: "SERVED", title: "Served", subtitle: "Enjoy" },
+        ]
+      : [
+          { status: "NEW", title: "Ordered", subtitle: "Received" },
+          { status: "PREPARING", title: "Preparing", subtitle: "Kitchen" },
+          { status: "READY", title: "Ready", subtitle: "Pickup" },
+          { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
+          { status: "SERVED", title: "Served", subtitle: "Enjoy" },
+        ];
+
+    const icons = service
+      ? [<FaClock />, <FaMotorcycle />, <FaCheckCircle />]
+      : [<FaClipboardCheck />, <FaUtensils />, <FaBell />, <FaMotorcycle />, <FaCheckCircle />];
+
+    return (
+      <div
+        className="item-tracking-row"
+        key={item._id || item.id || item.name}
+      >
+        <div className="item-tracking-heading">
+          <div>
+            <span>{service ? "SERVICE ITEM" : "FOOD ITEM"}</span>
+            <h3>{item.name} × {item.quantity ?? item.qty ?? 1}</h3>
+          </div>
+          <strong>{item.status?.replaceAll("_", " ") || "NEW"}</strong>
+        </div>
+
+        <div className={`tracking-line item-tracking-line steps-${steps.length}`}>
+          {steps.map((step, index) => (
+            <div
+              className={`tracking-step ${getStepStatus(item.status || "NEW", step.status) ? "completed" : ""}`}
+              key={step.status}
+            >
+              <div className="tracking-icon">{icons[index]}</div>
+              <h4>{step.title}</h4>
+              <p>{step.subtitle}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const estimate = order.customerEstimate || {};
+  const firstMinutes = Number(estimate.firstMinutes || 0);
+  const lastMinutes = Number(estimate.lastMinutes || 0);
+  const estimateText = firstMinutes && lastMinutes
+    ? `${firstMinutes}-${lastMinutes} Min`
+    : "Available immediately";
+
   const handleRating = (type, value) => {
     setFeedback((prev) => ({
       ...prev,
@@ -468,9 +546,10 @@ export default function Status() {
             </div>
 
           </div>
-          {/* SUPPORT CARD */}
 
-          <div className="glass-card support-card">
+          {/* RIGHT-SIDE SUPPORT */}
+
+          <div className="glass-card support-card order-support-card">
 
             <h2>
               Need Assistance?
@@ -497,149 +576,12 @@ export default function Status() {
 
         <div className="premium-right">
 
-          {/* TRACKING BOARD */}
+          {/* ITEM-LEVEL TRACKING */}
 
-          <div className="tracking-card">
-
-            <h2>
-              LIVE ORDER TRACKING
-            </h2>
-
-            <div className="tracking-line">
-
-              <div
-                className={`tracking-step ${getStepStatus(
-                  order.status,
-                  "NEW"
-                )
-                    ? "completed"
-                    : ""
-                  }`}
-              >
-
-                <div className="tracking-icon">
-
-                  <FaClipboardCheck />
-
-                </div>
-
-                <h4>
-                  Ordered
-                </h4>
-
-                <p>
-                  Received
-                </p>
-
-              </div>
-
-              <div
-                className={`tracking-step ${getStepStatus(
-                  order.status,
-                  "PREPARING"
-                )
-                    ? "completed"
-                    : ""
-                  }`}
-              >
-
-                <div className="tracking-icon">
-
-                  <FaUtensils />
-
-                </div>
-
-                <h4>
-                  Preparing
-                </h4>
-
-                <p>
-                  Kitchen
-                </p>
-
-              </div>
-
-              <div
-                className={`tracking-step ${getStepStatus(
-                  order.status,
-                  "READY"
-                )
-                    ? "completed"
-                    : ""
-                  }`}
-              >
-
-                <div className="tracking-icon">
-
-                  <FaBell />
-
-                </div>
-
-                <h4>
-                  Ready
-                </h4>
-
-                <p>
-                  Pickup
-                </p>
-
-              </div>
-
-              <div
-                className={`tracking-step ${getStepStatus(
-                  order.status,
-                  "ON_THE_WAY"
-                )
-                    ? "completed"
-                    : ""
-                  }`}
-              >
-
-                <div className="tracking-icon">
-
-                  <FaMotorcycle />
-
-                </div>
-
-                <h4>
-                  On The Way
-                </h4>
-
-                <p>
-                  Serving
-                </p>
-
-              </div>
-
-              <div
-                className={`tracking-step ${getStepStatus(
-                  order.status,
-                  "SERVED"
-                )
-                    ? "completed"
-                    : ""
-                  }`}
-              >
-
-                <div className="tracking-icon">
-
-                  <FaCheckCircle />
-
-                </div>
-
-                <h4>
-                  Served
-                </h4>
-
-                <p>
-                  Enjoy
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
+          <section className="tracking-card item-tracking-section">
+            <h2 className="item-tracking-title">LIVE ORDER TRACKING</h2>
+            {(order.items || []).map(renderItemTracker)}
+          </section>
 
           {/* ETA CARDS */}
 
@@ -656,7 +598,7 @@ export default function Status() {
                 </span>
 
                 <h2>
-                  15-20 Min
+                  {estimateText}
                 </h2>
 
               </div>

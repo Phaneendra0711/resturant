@@ -4,68 +4,53 @@ import Staff from "../models/Staff.js";
 
 const router = express.Router();
 
-/*
-  STAFF LOGIN
-  POST /api/staff/login
-*/
+/* =========================================================
+   STAFF LOGIN
+========================================================= */
 
 router.post("/login", async (req, res) => {
   try {
-    const {
-      username,
-      password,
-    } = req.body;
+    const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message:
-          "Username and password are required",
+        message: "Username and password are required",
       });
     }
 
-    const staff =
-      await Staff.findOne({
-        username:
-          username
-            .toLowerCase()
-            .trim(),
-      });
+    const staff = await Staff.findOne({
+      username: username.trim().toLowerCase(),
+    });
 
     if (!staff) {
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid username or password",
+        message: "Invalid username or password",
       });
     }
 
     if (!staff.active) {
       return res.status(403).json({
         success: false,
-        message:
-          "This staff account is disabled",
+        message: "This staff account is disabled",
       });
     }
 
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        staff.passwordHash
-      );
+    const passwordMatch = await bcrypt.compare(
+      password,
+      staff.passwordHash
+    );
 
     if (!passwordMatch) {
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid username or password",
+        message: "Invalid username or password",
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Login successful",
-
       staff: {
         _id: staff._id,
         name: staff.name,
@@ -75,24 +60,19 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(
-      "Staff login error:",
-      error
-    );
+    console.error("Staff login error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Login failed",
-      error: error.message,
+      message: "Server error during login",
     });
   }
 });
 
 
-/*
-  CREATE STAFF
-  POST /api/staff
-*/
+/* =========================================================
+   CREATE STAFF
+========================================================= */
 
 router.post("/", async (req, res) => {
   try {
@@ -101,363 +81,261 @@ router.post("/", async (req, res) => {
       username,
       password,
       role,
+      active = true,
     } = req.body;
 
-    if (
-      !name ||
-      !username ||
-      !password ||
-      !role
-    ) {
+    if (!name || !username || !password || !role) {
       return res.status(400).json({
         success: false,
-        message:
-          "Name, username, password and role are required",
+        message: "Name, username, password and role are required",
       });
     }
 
-    const allowedRoles = [
-      "ADMIN",
-      "CHEF",
-      "WAITER",
-    ];
+    const normalizedRole = role.toUpperCase();
 
-    if (
-      !allowedRoles.includes(role)
-    ) {
+    if (!["ADMIN", "CHEF", "WAITER"].includes(normalizedRole)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid staff role",
+        message: "Invalid staff role",
       });
     }
 
-    const existingStaff =
-      await Staff.findOne({
-        username:
-          username
-            .toLowerCase()
-            .trim(),
-      });
+    const normalizedUsername =
+      username.trim().toLowerCase();
+
+    const existingStaff = await Staff.findOne({
+      username: normalizedUsername,
+    });
 
     if (existingStaff) {
       return res.status(409).json({
         success: false,
-        message:
-          "Username already exists",
+        message: "Username already exists",
       });
     }
 
-    const passwordHash =
-      await bcrypt.hash(
-        password,
-        10
-      );
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    const staff =
-      await Staff.create({
-        name: name.trim(),
+    const staff = await Staff.create({
+      name: name.trim(),
+      username: normalizedUsername,
+      passwordHash,
+      role: normalizedRole,
+      active: Boolean(active),
 
-        username:
-          username
-            .toLowerCase()
-            .trim(),
+      // New waiter task system
+      waiterTasks: [],
+    });
 
-        passwordHash,
-
-        role,
-
-        // Every waiter starts with no active task
-        waiterTask: "",
-      });
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message:
-        "Staff created successfully",
-
+      message: "Staff created successfully",
       staff: {
         _id: staff._id,
         name: staff.name,
         username: staff.username,
         role: staff.role,
         active: staff.active,
-        createdAt:
-          staff.createdAt,
+        waiterTasks: staff.waiterTasks,
       },
     });
   } catch (error) {
-    console.error(
-      "Create staff error:",
-      error
-    );
+    console.error("Create staff error:", error);
 
-    res.status(500).json({
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Username already exists",
+      });
+    }
+
+    return res.status(500).json({
       success: false,
-      message:
-        "Failed to create staff",
-      error: error.message,
+      message: "Failed to create staff",
     });
   }
 });
 
 
-/*
-  GET ALL STAFF
-  GET /api/staff
-*/
+/* =========================================================
+   GET ALL STAFF
+========================================================= */
 
 router.get("/", async (req, res) => {
   try {
-    const staff =
-      await Staff.find()
-        .select("-passwordHash")
-        .sort({
-          createdAt: -1,
-        });
+    const staff = await Staff.find()
+      .select("-passwordHash")
+      .sort({ createdAt: -1 });
 
-    res.json({
+    return res.json({
       success: true,
       staff,
     });
   } catch (error) {
-    console.error(
-      "Get staff error:",
-      error
-    );
+    console.error("Get staff error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch staff",
-      error: error.message,
+      message: "Failed to fetch staff",
     });
   }
 });
 
 
-/*
-  ENABLE / DISABLE STAFF
-  PATCH /api/staff/:id/status
-*/
+/* =========================================================
+   UPDATE STAFF ACTIVE STATUS
+========================================================= */
 
-router.patch(
-  "/:id/status",
-  async (req, res) => {
-    try {
-      const { active } =
-        req.body;
+router.patch("/:id/status", async (req, res) => {
+  try {
+    const { active } = req.body;
 
-      if (
-        typeof active !==
-        "boolean"
-      ) {
+    if (typeof active !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Active must be true or false",
+      });
+    }
+
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    // Prevent disabling the last admin
+    if (staff.role === "ADMIN" && active === false) {
+      const activeAdmins = await Staff.countDocuments({
+        role: "ADMIN",
+        active: true,
+      });
+
+      if (activeAdmins <= 1) {
         return res.status(400).json({
           success: false,
-          message:
-            "Active must be true or false",
+          message: "Cannot disable the last active admin",
         });
       }
+    }
 
-      const existingStaff =
-        await Staff.findById(
-          req.params.id
-        );
+    staff.active = active;
 
-      if (!existingStaff) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Staff member not found",
-        });
-      }
+    await staff.save();
 
-      // ======================================
-      // PROTECT ADMIN ACCOUNT
-      // ======================================
+    return res.json({
+      success: true,
+      message: active
+        ? "Staff account enabled"
+        : "Staff account disabled",
+      staff: {
+        _id: staff._id,
+        name: staff.name,
+        username: staff.username,
+        role: staff.role,
+        active: staff.active,
+      },
+    });
+  } catch (error) {
+    console.error("Update staff status error:", error);
 
-      if (
-        existingStaff.role ===
-        "ADMIN"
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Admin accounts cannot be disabled or enabled",
-        });
-      }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update staff status",
+    });
+  }
+});
 
-      const staff =
-        await Staff.findByIdAndUpdate(
-          req.params.id,
-          { active },
-          {
-            new: true,
-            runValidators: true,
-          }
-        ).select(
-          "-passwordHash"
-        );
 
-      res.json({
-        success: true,
-        message:
-          "Staff status updated",
-        staff,
-      });
-    } catch (error) {
-      console.error(
-        "Update staff status error:",
-        error
-      );
+/* =========================================================
+   CHANGE STAFF PASSWORD
+========================================================= */
 
-      res.status(500).json({
+router.patch("/:id/password", async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || password.length < 4) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to update staff status",
-        error: error.message,
+        message: "Password must contain at least 4 characters",
       });
     }
+
+    const staff = await Staff.findById(req.params.id);
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    staff.passwordHash = await bcrypt.hash(password, 10);
+
+    await staff.save();
+
+    return res.json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to change password",
+    });
   }
-);
+});
 
 
-/*
-  CHANGE PASSWORD
-  PATCH /api/staff/:id/password
-*/
+/* =========================================================
+   DELETE STAFF
+========================================================= */
 
-router.patch(
-  "/:id/password",
-  async (req, res) => {
-    try {
-      const { password } =
-        req.body;
+router.delete("/:id", async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id);
 
-      if (
-        !password ||
-        password.trim().length <
-        4
-      ) {
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff member not found",
+      });
+    }
+
+    // Prevent deleting the last admin
+    if (staff.role === "ADMIN") {
+      const adminCount = await Staff.countDocuments({
+        role: "ADMIN",
+      });
+
+      if (adminCount <= 1) {
         return res.status(400).json({
           success: false,
-          message:
-            "Password must contain at least 4 characters",
+          message: "Cannot delete the last admin",
         });
       }
-
-      const passwordHash =
-        await bcrypt.hash(
-          password,
-          10
-        );
-
-      const staff =
-        await Staff.findByIdAndUpdate(
-          req.params.id,
-          {
-            passwordHash,
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        ).select(
-          "-passwordHash"
-        );
-
-      if (!staff) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Staff member not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "Staff password updated successfully",
-        staff,
-      });
-    } catch (error) {
-      console.error(
-        "Change staff password error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to change staff password",
-        error: error.message,
-      });
     }
+
+    await Staff.findByIdAndDelete(req.params.id);
+
+    return res.json({
+      success: true,
+      message: "Staff deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete staff error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete staff",
+    });
   }
-);
-
-
-/*
-  DELETE STAFF
-  DELETE /api/staff/:id
-*/
-
-router.delete(
-  "/:id",
-  async (req, res) => {
-    try {
-      const existingStaff =
-        await Staff.findById(
-          req.params.id
-        );
-
-      if (!existingStaff) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Staff member not found",
-        });
-      }
-
-      // ======================================
-      // PROTECT ADMIN ACCOUNT
-      // ======================================
-
-      if (
-        existingStaff.role ===
-        "ADMIN"
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Admin accounts cannot be removed",
-        });
-      }
-
-      await Staff.findByIdAndDelete(
-        req.params.id
-      );
-
-      res.json({
-        success: true,
-        message:
-          "Staff deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "Delete staff error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to delete staff",
-        error: error.message,
-      });
-    }
-  }
-);
+});
 
 
 export default router;
