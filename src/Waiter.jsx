@@ -486,7 +486,8 @@ export default function Waiter() {
       );
 
     if (
-      preference === "NOW"
+      preference === "NOW" &&
+      String(item?.status || "") === "WAITING"
     ) {
       return true;
     }
@@ -547,7 +548,7 @@ export default function Waiter() {
       orders,
       (order, item) => (
         (isFoodItem(item) && item.status === "READY") ||
-        (isServiceItem(item) && item.status === "NEW" && serviceAvailable(order, item))
+        (isServiceItem(item) && String(item?.status || "") === "WAITING" && serviceAvailable(order, item))
       )
     ),
     [orders]
@@ -973,93 +974,107 @@ export default function Waiter() {
      READY TASK GROUP CARD
   ======================================================= */
 
-  const renderReadyTask = ({ order, groupId, items, type }) => (
-    <Card
-      key={`${getOrderId(order)}-${groupId}`}
-    >
-      <div>
-        <div
-          style={{
-            color: "#22c55e",
-            fontSize: 11,
-            fontWeight: 800,
-            marginBottom: 8,
-          }}
-        >
-          {type === "FOOD" ? "READY TO SERVE" : "READY SERVICE ITEM"}
+  const renderReadyTask = ({ order, groupId, items, type }) => {
+    const foodItems = items.filter(isFoodItem);
+    const chefName = foodItems.map((item) => item?.chefName).find(Boolean) || "Unassigned";
+
+    return (
+      <Card
+        key={`${getOrderId(order)}-${groupId}`}
+      >
+        <div>
+          <div
+            style={{
+              color: "#22c55e",
+              fontSize: 11,
+              fontWeight: 800,
+              marginBottom: 8,
+            }}
+          >
+            {type === "FOOD" ? "READY TO SERVE" : "READY SERVICE ITEM"}
+          </div>
+
+          <h2
+            style={{
+              color: "#fff",
+              margin: "0 0 10px",
+            }}
+          >
+            {items.map((item, index) => (
+              <span key={getItemId(item)}>
+                {index > 0 && " + "}
+                {isServiceItem(item) ? "🥤" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
+              </span>
+            ))}
+          </h2>
+
+          <p>
+            <strong>
+              ORDER:
+            </strong>{" "}
+            #
+            {String(
+              getOrderId(order)
+            ).slice(-6)}
+          </p>
+
+          <p>
+            <strong>
+              CUSTOMER:
+            </strong>{" "}
+            {order.customerName ||
+              "Customer"}
+          </p>
+
+          <p>
+            <strong>
+              TABLE:
+            </strong>{" "}
+            {order.tableNumber ||
+              "N/A"}
+          </p>
+
+          {type === "FOOD" && (
+            <p>
+              <strong>
+                CHEF:
+              </strong>{" "}
+              {chefName}
+            </p>
+          )}
+
+          <p>
+            <strong>
+              PREFERENCE:
+            </strong>{" "}
+            {type === "FOOD" ? "FOOD SERVICE GROUP" : "SERVE NOW"}
+          </p>
         </div>
 
-        <h2
+        <button
+          className="way-btn"
+          disabled={!hasFreeSlot}
+          onClick={() =>
+            acceptTaskGroup(
+              getOrderId(order),
+              groupId
+            )
+          }
           style={{
-            color: "#fff",
-            margin: "0 0 10px",
+            minWidth: 190,
+            padding:
+              "14px 20px",
+            opacity:
+              hasFreeSlot
+                ? 1
+                : 0.45,
           }}
         >
-          {items.map((item, index) => (
-            <span key={getItemId(item)}>
-              {index > 0 && " + "}
-              {isServiceItem(item) ? "🥤" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
-            </span>
-          ))}
-        </h2>
-
-        <p>
-          <strong>
-            ORDER:
-          </strong>{" "}
-          #
-          {String(
-            getOrderId(order)
-          ).slice(-6)}
-        </p>
-
-        <p>
-          <strong>
-            CUSTOMER:
-          </strong>{" "}
-          {order.customerName ||
-            "Customer"}
-        </p>
-
-        <p>
-          <strong>
-            TABLE:
-          </strong>{" "}
-          {order.tableNumber ||
-            "N/A"}
-        </p>
-
-        <p>
-          <strong>
-            PREFERENCE:
-          </strong>{" "}
-          {type === "FOOD" ? "FOOD SERVICE GROUP" : "SERVE NOW"}
-        </p>
-      </div>
-
-      <button
-        className="way-btn"
-        disabled={!hasFreeSlot}
-        onClick={() =>
-          acceptTaskGroup(
-            getOrderId(order),
-            groupId
-          )
-        }
-        style={{
-          minWidth: 190,
-          padding:
-            "14px 20px",
-          opacity:
-            hasFreeSlot
-              ? 1
-              : 0.45,
-        }}
-      >
-        🚶 SERVE NOW
-      </button>
-    </Card>
-  );
+          🚶 SERVE NOW
+        </button>
+      </Card>
+    );
+  };
 
   /* =======================================================
      ASSISTANCE CARD
@@ -1067,83 +1082,98 @@ export default function Waiter() {
 
   const renderAssistance = (
     request
-  ) => (
-    <Card
-      key={request._id}
-    >
-      <div>
-        <div
-          style={{
-            color: "#d89a2b",
-            fontSize: 11,
-            fontWeight: 800,
-            marginBottom: 8,
-          }}
-        >
-          🔔 ASSISTANCE
-        </div>
+  ) => {
+    const isCashRequest =
+      String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT" ||
+      String(request?.paymentType || "").toUpperCase() === "CASH";
 
-        <h2
-          style={{
-            color: "#fff",
-            margin:
-              "0 0 10px",
-          }}
-        >
-          CUSTOMER ASSISTANCE
-        </h2>
-
-        <p>
-          <strong>
-            CUSTOMER:
-          </strong>{" "}
-          {request.customerName ||
-            "Customer"}
-        </p>
-
-        <p>
-          <strong>
-            TABLE:
-          </strong>{" "}
-          {request.tableNumber ||
-            "N/A"}
-        </p>
-
-        {request.message && (
-          <p
+    return (
+      <Card
+        key={request._id}
+      >
+        <div>
+          <div
             style={{
-              color: "#ddd",
-              marginTop: 10,
+              color: isCashRequest ? "#f4c45f" : "#d89a2b",
+              fontSize: 11,
+              fontWeight: 800,
+              marginBottom: 8,
             }}
           >
-            <strong>
-              REQUEST:
-            </strong>{" "}
-            {request.message}
-          </p>
-        )}
-      </div>
+            {isCashRequest ? "💵 CASH REQUEST" : "🔔 ASSISTANCE"}
+          </div>
 
-      <button
-        className="way-btn"
-        disabled={!hasFreeSlot}
-        onClick={() =>
-          acceptAssistance(
-            request._id
-          )
-        }
-        style={{
-          minWidth: 200,
-          opacity:
-            hasFreeSlot
-              ? 1
-              : 0.45,
-        }}
-      >
-        🤝 ACCEPT ASSISTANCE
-      </button>
-    </Card>
-  );
+          <h2
+            style={{
+              color: "#fff",
+              margin:
+                "0 0 10px",
+            }}
+          >
+            {isCashRequest ? "HARD CASH PAYMENT" : "CUSTOMER ASSISTANCE"}
+          </h2>
+
+          <p>
+            <strong>
+              CUSTOMER:
+            </strong>{" "}
+            {request.customerName ||
+              "Customer"}
+          </p>
+
+          <p>
+            <strong>
+              TABLE:
+            </strong>{" "}
+            {request.tableNumber ||
+              "N/A"}
+          </p>
+
+          {isCashRequest && (
+            <p>
+              <strong>
+                GRAND TOTAL:
+              </strong>{" "}
+              ₹{Number(request.grandTotal || 0).toFixed(0)}
+            </p>
+          )}
+
+          {request.message && (
+            <p
+              style={{
+                color: "#ddd",
+                marginTop: 10,
+              }}
+            >
+              <strong>
+                {isCashRequest ? "REQUEST:" : "REQUEST:"}
+              </strong>{" "}
+              {request.message}
+            </p>
+          )}
+        </div>
+
+        <button
+          className="way-btn"
+          disabled={!hasFreeSlot}
+          onClick={() =>
+            acceptAssistance(
+              request._id
+            )
+          }
+          style={{
+            minWidth: 200,
+            opacity:
+              hasFreeSlot
+                ? 1
+                : 0.45,
+          }}
+        >
+          {isCashRequest ? "🤝 ACCEPT CASH" : "🤝 ACCEPT ASSISTANCE"}
+        </button>
+      </Card>
+    );
+  };
 
   /* =======================================================
      ACTIVE CARD
@@ -1158,6 +1188,9 @@ export default function Waiter() {
     ) {
       const request =
         task.request;
+      const isCashRequest =
+        String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT" ||
+        String(request?.paymentType || "").toUpperCase() === "CASH";
 
       return (
         <Card
@@ -1166,16 +1199,16 @@ export default function Waiter() {
           <div>
             <div
               style={{
-                color: "#d89a2b",
+                color: isCashRequest ? "#f4c45f" : "#d89a2b",
                 fontWeight: 800,
                 marginBottom: 8,
               }}
             >
-              🔔 ASSISTANCE
+              {isCashRequest ? "💵 CASH REQUEST" : "🔔 ASSISTANCE"}
             </div>
 
             <h2>
-              CUSTOMER ASSISTANCE
+              {isCashRequest ? "HARD CASH PAYMENT" : "CUSTOMER ASSISTANCE"}
             </h2>
 
             <p>
@@ -1189,6 +1222,12 @@ export default function Waiter() {
               {request.tableNumber ||
                 "N/A"}
             </p>
+
+            {isCashRequest && (
+              <p>
+                GRAND TOTAL: ₹{Number(request.grandTotal || 0).toFixed(0)}
+              </p>
+            )}
           </div>
 
           <Timer
@@ -1196,9 +1235,9 @@ export default function Waiter() {
               request.acceptedAt
             }
             targetMinutes={
-              ASSISTANCE_TARGET_MINUTES
+              isCashRequest ? 10 : ASSISTANCE_TARGET_MINUTES
             }
-            label="ASSISTANCE"
+            label={isCashRequest ? "CASH" : "ASSISTANCE"}
           />
 
           <button
@@ -1214,7 +1253,7 @@ export default function Waiter() {
                 "14px 20px",
             }}
           >
-            ✓ PROBLEM SORTED
+            {isCashRequest ? "✓ CASH RECEIVED" : "✓ PROBLEM SORTED"}
           </button>
         </Card>
       );

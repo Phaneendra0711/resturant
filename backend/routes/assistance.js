@@ -57,19 +57,53 @@ router.post("/", async (req, res) => {
       customerName,
       tableNumber,
       message,
+      type,
+      paymentType,
+      grandTotal,
     } = req.body;
 
+    const requestType = String(type || "ASSISTANCE").trim().toUpperCase();
+    const normalizedPaymentType = String(paymentType || "CASH").trim().toUpperCase();
+    const safeTableNumber = String(tableNumber || "").trim();
+
+    if (!customerName || !customerName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer name is required",
+      });
+    }
+
+    if (!safeTableNumber || !Array.from({ length: 30 }, (_, i) => String(i + 1)).includes(safeTableNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Table number must be between 1 and 30",
+      });
+    }
+
+    const cashMessage =
+      requestType === "CASH_PAYMENT"
+        ? `Cash payment request for ₹${Number(grandTotal || 0).toFixed(0)}`
+        : (message || "");
 
     const request =
       await AssistanceRequest.create({
         customerName:
-          customerName || "Customer",
+          customerName.trim(),
 
         tableNumber:
-          tableNumber || "",
+          safeTableNumber,
+
+        type:
+          requestType === "CASH_PAYMENT" ? "CASH_PAYMENT" : "ASSISTANCE",
+
+        paymentType:
+          requestType === "CASH_PAYMENT" ? normalizedPaymentType : "CASH",
 
         message:
-          message || "",
+          cashMessage,
+
+        grandTotal:
+          Number(grandTotal || 0),
 
         status:
           "ACTIVE",
@@ -92,7 +126,7 @@ router.post("/", async (req, res) => {
       success: true,
 
       message:
-        "Assistance request created",
+        requestType === "CASH_PAYMENT" ? "Cash request created" : "Assistance request created",
 
       request,
     });
@@ -278,6 +312,9 @@ router.patch(
                 staffId,
 
               acceptedByName:
+                staffName || "",
+
+              acceptedBy:
                 staffName || "",
 
               acceptedAt:

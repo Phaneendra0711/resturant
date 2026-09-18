@@ -254,6 +254,89 @@ export default function AdminPerformance() {
       [orders]
     );
 
+  const orderStatusSummary =
+    useMemo(() => {
+      const summary = {
+        NEW: 0,
+        PREPARING: 0,
+        SERVED: 0,
+      };
+
+      orders.forEach((order) => {
+        const status = String(order.status || "NEW").toUpperCase();
+
+        if (status in summary) {
+          summary[status] += 1;
+        }
+      });
+
+      return summary;
+    }, [orders]);
+
+  const foodItemStatusSummary =
+    useMemo(() => {
+      const summary = {
+        NEW: 0,
+        PREPARING: 0,
+        READY: 0,
+        ON_THE_WAY: 0,
+        SERVED: 0,
+      };
+
+      orders.forEach((order) => {
+        (order.items || []).forEach((item) => {
+          if (String(item.serviceType || "FOOD").toUpperCase() === "SERVICE") {
+            return;
+          }
+
+          const status = String(item.status || "ORDERED").toUpperCase();
+
+          if (status === "ORDERED") {
+            summary.NEW += 1;
+          } else if (status === "PREPARING") {
+            summary.PREPARING += 1;
+          } else if (status === "READY") {
+            summary.READY += 1;
+          } else if (status === "ON_THE_WAY") {
+            summary.ON_THE_WAY += 1;
+          } else if (status === "SERVED") {
+            summary.SERVED += 1;
+          }
+        });
+      });
+
+      return summary;
+    }, [orders]);
+
+  const serviceItemStatusSummary =
+    useMemo(() => {
+      const summary = {
+        WAITING: 0,
+        ON_THE_WAY: 0,
+        SERVED: 0,
+      };
+
+      orders.forEach((order) => {
+        (order.items || []).forEach((item) => {
+          if (String(item.serviceType || "FOOD").toUpperCase() !== "SERVICE") {
+            return;
+          }
+
+          const status = String(item.status || "WAITING").toUpperCase();
+
+          if (status === "WAITING") {
+            summary.WAITING += 1;
+          } else if (status === "ON_THE_WAY") {
+            summary.ON_THE_WAY += 1;
+          } else if (status === "SERVED") {
+            summary.SERVED += 1;
+          }
+        });
+      });
+
+      return summary;
+    }, [orders]);
+
   // ==========================================
   // REVENUE
   // ==========================================
@@ -426,13 +509,27 @@ export default function AdminPerformance() {
       "en-IN"
     )}`;
 
+  const sanitizeWholeAmount = (value) => {
+    if (value === "") return "";
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "";
+    return String(Math.trunc(numeric));
+  };
+
   const generateCashCoupon = async (event) => {
     event.preventDefault();
+
+    const normalizedAmount = Number(cashAmount);
+    if (!Number.isInteger(normalizedAmount) || normalizedAmount <= 0) {
+      alert("Enter a whole positive cash amount");
+      return;
+    }
+
     const response = await fetch("/api/coupons/cash", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: Number(cashAmount), customerName: cashCustomer,
+        amount: normalizedAmount, customerName: cashCustomer,
         customerPhone: cashPhone, adminId: localStorage.getItem("staffId"),
       }),
     });
@@ -1070,7 +1167,7 @@ export default function AdminPerformance() {
               </div>
             ) : (
               <>
-                <input required type="number" min="1" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Cash amount (₹)" style={{ width: "100%", padding: 12, marginTop: 12, borderRadius: 8 }} />
+                <input required type="number" min="1" step="1" value={cashAmount} onChange={(e) => setCashAmount(sanitizeWholeAmount(e.target.value))} placeholder="Cash amount (₹)" style={{ width: "100%", padding: 12, marginTop: 12, borderRadius: 8 }} />
                 <input value={cashCustomer} onChange={(e) => setCashCustomer(e.target.value)} placeholder="Customer name" style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 8 }} />
                 <input value={cashPhone} onChange={(e) => setCashPhone(e.target.value)} placeholder="Customer phone (optional)" style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 8 }} />
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
@@ -1433,7 +1530,7 @@ export default function AdminPerformance() {
       </div>
 
       {/* ======================================
-          ORDER STATUS SUMMARY
+          STATUS OVERVIEW
       ====================================== */}
 
       <div
@@ -1445,15 +1542,15 @@ export default function AdminPerformance() {
             "30px",
         }}
       >
-
         <h2
           style={{
             color:
               "#ffb347",
             marginTop: 0,
+            marginBottom: "20px",
           }}
         >
-          Order Status Overview
+          Status Overview
         </h2>
 
         <div
@@ -1461,57 +1558,135 @@ export default function AdminPerformance() {
             display:
               "grid",
             gridTemplateColumns:
-              "repeat(auto-fit,minmax(150px,1fr))",
+              "1fr",
             gap:
               "15px",
           }}
         >
+          <div
+            style={{
+              border:
+                "1px solid rgba(255,179,71,0.25)",
+              borderRadius:
+                "12px",
+              padding:
+                "12px",
+              background:
+                "rgba(255,179,71,0.04)",
+            }}
+          >
+            <div
+              style={{
+                color:
+                  "#ffb347",
+                fontWeight:
+                  700,
+                marginBottom:
+                  "12px",
+              }}
+            >
+              Order Status
+            </div>
 
-          <StatusBox
-            title="New"
-            value={
-              newOrders.length
-            }
-            icon="🆕"
-            color="#ffb347"
-          />
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(3, minmax(0, 1fr))",
+                gap:
+                  "10px",
+              }}
+            >
+              <StatusBox title="New" value={orderStatusSummary.NEW} icon="🆕" color="#ffb347" />
+              <StatusBox title="Preparing" value={orderStatusSummary.PREPARING} icon="👨‍🍳" color="#ff8c00" />
+              <StatusBox title="Served" value={orderStatusSummary.SERVED} icon="✅" color="#8bc34a" />
+            </div>
+          </div>
 
-          <StatusBox
-            title="Preparing"
-            value={
-              preparingOrders.length
-            }
-            icon="👨‍🍳"
-            color="#ff8c00"
-          />
+          <div
+            style={{
+              border:
+                "1px solid rgba(52,152,219,0.25)",
+              borderRadius:
+                "12px",
+              padding:
+                "12px",
+              background:
+                "rgba(52,152,219,0.04)",
+            }}
+          >
+            <div
+              style={{
+                color:
+                  "#4da3ff",
+                fontWeight:
+                  700,
+                marginBottom:
+                  "12px",
+              }}
+            >
+              Item Status
+            </div>
 
-          <StatusBox
-            title="Ready"
-            value={
-              readyOrders.length
-            }
-            icon="🔔"
-            color="#4caf50"
-          />
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(5, minmax(0, 1fr))",
+                gap:
+                  "10px",
+              }}
+            >
+              <StatusBox title="New" value={foodItemStatusSummary.NEW} icon="🆕" color="#ffb347" />
+              <StatusBox title="Preparing" value={foodItemStatusSummary.PREPARING} icon="👨‍🍳" color="#ff8c00" />
+              <StatusBox title="Ready" value={foodItemStatusSummary.READY} icon="🔔" color="#4caf50" />
+              <StatusBox title="On Way" value={foodItemStatusSummary.ON_THE_WAY} icon="🚶" color="#3498db" />
+              <StatusBox title="Served" value={foodItemStatusSummary.SERVED} icon="✅" color="#8bc34a" />
+            </div>
+          </div>
 
-          <StatusBox
-            title="On The Way"
-            value={
-              onTheWayOrders.length
-            }
-            icon="🚶"
-            color="#3498db"
-          />
+          <div
+            style={{
+              border:
+                "1px solid rgba(76,175,80,0.25)",
+              borderRadius:
+                "12px",
+              padding:
+                "12px",
+              background:
+                "rgba(76,175,80,0.04)",
+            }}
+          >
+            <div
+              style={{
+                color:
+                  "#66bb6a",
+                fontWeight:
+                  700,
+                marginBottom:
+                  "12px",
+              }}
+            >
+              Service Status
+            </div>
 
-          <StatusBox
-            title="Served"
-            value={
-              completedOrders.length
-            }
-            icon="✅"
-            color="#8bc34a"
-          />
-
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(3, minmax(0, 1fr))",
+                gap:
+                  "10px",
+              }}
+            >
+              <StatusBox title="Waiting" value={serviceItemStatusSummary.WAITING} icon="⏳" color="#ffb347" />
+              <StatusBox title="On Way" value={serviceItemStatusSummary.ON_THE_WAY} icon="🚶" color="#3498db" />
+              <StatusBox title="Served" value={serviceItemStatusSummary.SERVED} icon="✅" color="#8bc34a" />
+            </div>
+          </div>
         </div>
       </div>
 

@@ -351,6 +351,8 @@ const normalizeCart = (
    CART COMPONENT
    ========================================================= */
 
+const CASH_REQUEST_COOLDOWN_MS = 10 * 60 * 1000;
+
 export default function Cart() {
 
   const navigate =
@@ -398,6 +400,30 @@ export default function Cart() {
     updated,
     setUpdated,
   ] = useState(false);
+
+  const [showCashConfirm, setShowCashConfirm] = useState(false);
+  const [showOptionalInputs, setShowOptionalInputs] = useState(false);
+  const [cashRequestCooldownUntil, setCashRequestCooldownUntil] = useState(() => {
+    const saved = Number(localStorage.getItem("cashRequestCooldownUntil") || 0);
+    return Number.isFinite(saved) ? saved : 0;
+  });
+
+  const isCashCooldownActive = Date.now() < cashRequestCooldownUntil;
+  const cashCooldownRemaining =
+    isCashCooldownActive ? Math.max(0, Math.ceil((cashRequestCooldownUntil - Date.now()) / 1000)) : 0;
+
+  useEffect(() => {
+    if (!isCashCooldownActive) return undefined;
+
+    const timer = setInterval(() => {
+      if (Date.now() >= cashRequestCooldownUntil) {
+        setCashRequestCooldownUntil(0);
+        localStorage.removeItem("cashRequestCooldownUntil");
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cashRequestCooldownUntil, isCashCooldownActive]);
 
 
   /* =========================================================
@@ -2259,159 +2285,255 @@ export default function Cart() {
               </div>
 
 
-              <div className="form-group">
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                    COUPON CODE
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowOptionalInputs((prev) => !prev)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(244,196,95,0.4)",
+                      background: "rgba(244,196,95,0.08)",
+                      color: "#f4c45f",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showOptionalInputs ? "CLOSE" : "+ ADD"}
+                  </button>
+                </div>
 
-                <label>
+                {showOptionalInputs && (
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value);
+                        setCouponDiscount(0);
+                      }}
+                      placeholder="Enter coupon code"
+                      style={{ flex: 1, minWidth: 0 }}
+                    />
 
-                  COUPON CODE
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      style={{
+                        padding: "9px 14px",
+                        borderRadius: "8px",
+                        border: "none",
+                        background: "#ffb347",
+                        color: "#111",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
 
-                  <span>
-                    OPTIONAL
-                  </span>
-
-                </label>
-
-                <input
-                  type="text"
-                  value={
-                    couponCode
-                  }
-                  onChange={(
-                    e
-                  ) => {
-                    setCouponCode(e.target.value);
-                    setCouponDiscount(0);
-                  }
-                  }
-                  placeholder="Enter coupon code"
-                />
-
-                <button type="button" onClick={applyCoupon} style={{ marginTop: "8px", padding: "9px 14px", borderRadius: "8px", border: "none", background: "#ffb347", color: "#111", fontWeight: "bold", cursor: "pointer" }}>
-                  Apply coupon
-                </button>
                 {couponDiscount > 0 && (
-                  <p style={{ color: "#69d36b", marginTop: "7px" }}>
+                  <p style={{ color: "#69d36b", marginTop: "-2px" }}>
                     Coupon applied: −₹{couponDiscount.toFixed(0)}
                   </p>
                 )}
 
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                    DESCRIPTION TO CHEF
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setChefDescription((prev) => prev ? prev : "")}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(244,196,95,0.4)",
+                      background: "rgba(244,196,95,0.08)",
+                      color: "#f4c45f",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + ADD
+                  </button>
+                </div>
+
+                {chefDescription !== "" && (
+                  <textarea
+                    value={chefDescription}
+                    onChange={(e) => setChefDescription(e.target.value)}
+                    placeholder="Less spicy, no onions, extra crispy..."
+                    style={{ minHeight: "70px" }}
+                  />
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                    DESCRIPTION TO WAITER
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setWaiterDescription((prev) => prev ? prev : "")}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(244,196,95,0.4)",
+                      background: "rgba(244,196,95,0.08)",
+                      color: "#f4c45f",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + ADD
+                  </button>
+                </div>
+
+                {waiterDescription !== "" && (
+                  <textarea
+                    value={waiterDescription}
+                    onChange={(e) => setWaiterDescription(e.target.value)}
+                    placeholder="Bring extra plates, serve after 10 minutes..."
+                    style={{ minHeight: "70px" }}
+                  />
+                )}
               </div>
 
 
-              <div className="form-group">
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
+                <button
+                  className="checkout-btn"
+                  onClick={() => {
+                    if (!customerName.trim()) {
+                      alert("Please enter your name before sending a cash request.");
+                      return;
+                    }
 
-                <label>
+                    if (!tableNumber) {
+                      alert("Please select your table number before sending a cash request.");
+                      return;
+                    }
 
-                  DESCRIPTION TO CHEF
+                    if (isCashCooldownActive) {
+                      const remainingMinutes = Math.ceil(cashCooldownRemaining / 60);
+                      alert(`Please wait ${remainingMinutes} minute(s) before sending another cash request.`);
+                      return;
+                    }
+
+                    setShowCashConfirm(true);
+                  }}
+                  style={{
+                    background: "#f4c45f",
+                    color: "#111",
+                    opacity: isCashCooldownActive ? 0.7 : 1,
+                    width: "100%",
+                  }}
+                  disabled={isCashCooldownActive}
+                >
+                  <span>
+                    {isCashCooldownActive
+                      ? `HARD CASH (${Math.ceil(cashCooldownRemaining / 60)}m)`
+                      : "HARD CASH"}
+                  </span>
+                </button>
+
+                <button
+                  className="checkout-btn"
+                  onClick={
+                    handlePlaceOrder
+                  }
+                  style={{ width: "100%" }}
+                >
 
                   <span>
-                    OPTIONAL
+                    PROCEED TO BILLING
                   </span>
 
-                </label>
+                  <FaArrowRight />
 
-                <textarea
-                  value={
-                    chefDescription
-                  }
-                  onChange={(
-                    e
-                  ) =>
-                    setChefDescription(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Less spicy, no onions, extra crispy..."
-                />
-
+                </button>
               </div>
 
+              {showCashConfirm && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "14px",
+                    borderRadius: "12px",
+                    background: "rgba(244,196,95,0.08)",
+                    border: "1px solid rgba(244,196,95,0.4)",
+                    color: "#f4f4f4",
+                  }}
+                >
+                  <p style={{ margin: "0 0 12px", fontWeight: 700 }}>
+                    Send hard cash request for ₹{payableTotal.toFixed(0)} for {customerName.trim()} at table {tableNumber}?
+                  </p>
 
-              <div className="form-group">
+                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                    <button
+                      className="checkout-btn"
+                      onClick={() => setShowCashConfirm(false)}
+                      style={{
+                        flex: 1,
+                        background: "#2a2a2a",
+                        color: "#f4f4f4",
+                      }}
+                    >
+                      CANCEL
+                    </button>
 
-                <label>
+                    <button
+                      className="checkout-btn"
+                      onClick={() => {
+                        fetch("/api/assistance", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            customerName: customerName.trim(),
+                            tableNumber: String(tableNumber),
+                            type: "CASH_PAYMENT",
+                            paymentType: "CASH",
+                            grandTotal: Number(payableTotal.toFixed(0)),
+                            message: `Cash payment request for ₹${payableTotal.toFixed(0)}`,
+                          }),
+                        })
+                          .then(async (response) => {
+                            const data = await response.json();
+                            if (!response.ok) {
+                              throw new Error(data.message || "Unable to send cash request");
+                            }
 
-                  DESCRIPTION TO WAITER
-
-                  <span>
-                    OPTIONAL
-                  </span>
-
-                </label>
-
-                <textarea
-                  value={
-                    waiterDescription
-                  }
-                  onChange={(
-                    e
-                  ) =>
-                    setWaiterDescription(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Bring extra plates, serve after 10 minutes..."
-                />
-
-              </div>
-
-
-              <button
-                className="checkout-btn"
-                onClick={
-                  handlePlaceOrder
-                }
-              >
-
-                <span>
-                  PROCEED TO BILLING
-                </span>
-
-                <FaArrowRight />
-
-              </button>
-
-
-              <button
-                className="track-btn"
-                onClick={() =>
-                  navigate(
-                    "/status"
-                  )
-                }
-              >
-                📦 TRACK MY ORDER
-              </button>
-
-
-              <div className="payment-title">
-                PAYMENT METHODS
-              </div>
-
-
-              <div className="payment-icons">
-
-                <div>
-                  VISA
+                            const nextCooldown = Date.now() + CASH_REQUEST_COOLDOWN_MS;
+                            setCashRequestCooldownUntil(nextCooldown);
+                            localStorage.setItem("cashRequestCooldownUntil", String(nextCooldown));
+                            setShowCashConfirm(false);
+                            alert("Cash request sent to the waiter.");
+                          })
+                          .catch((error) => {
+                            console.error("CASH REQUEST ERROR:", error);
+                            alert(error.message || "Unable to send cash request.");
+                          });
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "#f4c45f",
+                        color: "#111",
+                      }}
+                    >
+                      OK
+                    </button>
+                  </div>
                 </div>
-
-                <div>
-                  MC
-                </div>
-
-                <div>
-                  AMEX
-                </div>
-
-                <div>
-                  UPI
-                </div>
-
-                <div>
-                  PAY
-                </div>
-
-              </div>
+              )}
 
             </div>
 

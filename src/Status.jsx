@@ -37,6 +37,38 @@ export default function Status() {
 
   const [feedbackMessage, setFeedbackMessage] =
     useState("");
+  const [showWaiterModal, setShowWaiterModal] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
+  const [assistanceSubmitting, setAssistanceSubmitting] = useState(false);
+  const [assistanceMessage, setAssistanceMessage] = useState("");
+  const [waiterCooldownUntil, setWaiterCooldownUntil] = useState(() => {
+    const saved = localStorage.getItem("waiterCooldownUntil");
+    return saved ? Number(saved) : 0;
+  });
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  useEffect(() => {
+    const updateCooldown = () => {
+      const remaining = Math.max(0, waiterCooldownUntil - Date.now());
+      setCooldownRemaining(remaining);
+
+      if (remaining <= 0 && waiterCooldownUntil > 0) {
+        localStorage.removeItem("waiterCooldownUntil");
+        setWaiterCooldownUntil(0);
+      }
+    };
+
+    updateCooldown();
+    const timer = setInterval(updateCooldown, 1000);
+    return () => clearInterval(timer);
+  }, [waiterCooldownUntil]);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -141,22 +173,46 @@ export default function Status() {
     currentStatus,
     step
   ) => {
+    const normalizedCurrent = String(currentStatus || "")
+      .trim()
+      .toUpperCase();
 
-    const steps = [
-      "NEW",
+    const normalizedStep = String(step || "")
+      .trim()
+      .toUpperCase();
+
+    const foodSteps = [
+      "ORDERED",
       "PREPARING",
       "READY",
       "ON_THE_WAY",
       "SERVED",
     ];
 
-    return (
-      steps.indexOf(
-        currentStatus
-      ) >=
-      steps.indexOf(step)
-    );
+    const serviceSteps = [
+      "WAITING",
+      "ON_THE_WAY",
+      "SERVED",
+    ];
 
+    const legacyMap = {
+      NEW: "ORDERED",
+      PREPARING: "PREPARING",
+      READY: "READY",
+      ON_THE_WAY: "ON_THE_WAY",
+      SERVED: "SERVED",
+    };
+
+    const currentLookup = legacyMap[normalizedCurrent] || normalizedCurrent;
+    const stepOrder = serviceSteps.includes(normalizedStep) ? serviceSteps : foodSteps;
+    const currentIndex = stepOrder.indexOf(currentLookup);
+    const stepIndex = stepOrder.indexOf(normalizedStep);
+
+    if (currentIndex === -1 || stepIndex === -1) {
+      return false;
+    }
+
+    return currentIndex >= stepIndex;
   };
 
   const getStatusText = () => {
@@ -170,12 +226,6 @@ export default function Status() {
 
       case "PREPARING":
         return "Preparation Underway";
-
-      case "READY":
-        return "Ready For Service";
-
-      case "ON_THE_WAY":
-        return "On The Way To Table";
 
       case "SERVED":
         return "Served Successfully";
@@ -195,7 +245,7 @@ export default function Status() {
 
   const getServiceWaitingLabel = (item) => {
     const preference = String(
-      item?.servicePreference || item?.serviceGroup || item?.preference || ""
+      item?.whenToServe || item?.servicePreference || item?.serviceGroup || item?.preference || ""
     ).toUpperCase();
 
     if (preference.includes("FIRST") || preference.includes("1ST")) {
@@ -213,12 +263,12 @@ export default function Status() {
     const service = isServiceItem(item);
     const steps = service
       ? [
-          { status: "NEW", title: getServiceWaitingLabel(item), subtitle: "Service" },
+          { status: "WAITING", title: getServiceWaitingLabel(item), subtitle: "Service" },
           { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
           { status: "SERVED", title: "Served", subtitle: "Enjoy" },
         ]
       : [
-          { status: "NEW", title: "Ordered", subtitle: "Received" },
+          { status: "ORDERED", title: "Ordered", subtitle: "Received" },
           { status: "PREPARING", title: "Preparing", subtitle: "Kitchen" },
           { status: "READY", title: "Ready", subtitle: "Pickup" },
           { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
@@ -239,13 +289,13 @@ export default function Status() {
             <span>{service ? "SERVICE ITEM" : "FOOD ITEM"}</span>
             <h3>{item.name} × {item.quantity ?? item.qty ?? 1}</h3>
           </div>
-          <strong>{item.status?.replaceAll("_", " ") || "NEW"}</strong>
+          <strong>{item.status?.replaceAll("_", " ") || (service ? "WAITING" : "ORDERED")}</strong>
         </div>
 
         <div className={`tracking-line item-tracking-line steps-${steps.length}`}>
           {steps.map((step, index) => (
             <div
-              className={`tracking-step ${getStepStatus(item.status || "NEW", step.status) ? "completed" : ""}`}
+              className={`tracking-step ${getStepStatus(item.status || (service ? "WAITING" : "ORDERED"), step.status) ? "completed" : ""}`}
               key={step.status}
             >
               <div className="tracking-icon">{icons[index]}</div>
@@ -264,6 +314,96 @@ export default function Status() {
   const estimateText = firstMinutes && lastMinutes
     ? `${firstMinutes}-${lastMinutes} Min`
     : "Available immediately";
+
+  const estimateSeconds = firstMinutes && lastMinutes
+    ? ((firstMinutes + lastMinutes) / 2) * 60
+    : 0;
+
+  const servedAtValue =
+    order.waiter?.servedAt ||
+    (order.items || []).find((item) => item.servedAt)?.servedAt ||
+    null;
+
+  const isOrderServed = String(order.status || "").toUpperCase() === "SERVED";
+
+  const timerReferenceTime = servedAtValue
+    ? new Date(servedAtValue).getTime()
+    : now;
+
+  const elapsedSeconds = order.createdAt
+    ? Math.max(0, (timerReferenceTime - new Date(order.createdAt).getTime()) / 1000)
+    : 0;
+
+  const remainingSeconds = estimateSeconds > 0
+    ? estimateSeconds - elapsedSeconds
+    : 0;
+
+  const formatCountdown = (seconds) => {
+    const totalSeconds = Math.max(0, Math.ceil(Math.abs(seconds)));
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    const sign = seconds < 0 ? "-" : "";
+    return `${sign}${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  const liveTimerText = estimateSeconds > 0
+    ? `${formatCountdown(remainingSeconds)} ${remainingSeconds < 0 ? "late" : "left"}`
+    : "Ready now";
+
+  const requestWaiter = async () => {
+    if (waiterCooldownUntil > Date.now()) {
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setAssistanceMessage("Please enter your name.");
+      return;
+    }
+
+    if (!tableNumber) {
+      setAssistanceMessage("Please select your table number.");
+      return;
+    }
+
+    try {
+      setAssistanceSubmitting(true);
+      setAssistanceMessage("");
+
+      const response = await fetch("/api/assistance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          tableNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to request waiter");
+      }
+
+      setAssistanceMessage("Waiter has been notified. Please wait a moment.");
+      const cooldownUntil = Date.now() + 5 * 60 * 1000;
+      localStorage.setItem("waiterCooldownUntil", String(cooldownUntil));
+      setWaiterCooldownUntil(cooldownUntil);
+
+      setTimeout(() => {
+        setShowWaiterModal(false);
+        setCustomerName("");
+        setTableNumber("");
+        setAssistanceMessage("");
+      }, 1800);
+    } catch (error) {
+      console.error("Waiter assistance error:", error);
+      setAssistanceMessage(error.message || "Unable to request waiter.");
+    } finally {
+      setAssistanceSubmitting(false);
+    }
+  };
 
   const handleRating = (type, value) => {
     setFeedback((prev) => ({
@@ -337,6 +477,10 @@ export default function Status() {
       setFeedbackMessage(
         "Thank you for sharing your experience!"
       );
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
 
     } catch (error) {
 
@@ -459,18 +603,6 @@ export default function Status() {
             <div className="order-info-row">
 
               <span>
-                Order ID
-              </span>
-
-              <strong>
-                #{order._id || order.id}
-              </strong>
-
-            </div>
-
-            <div className="order-info-row">
-
-              <span>
                 Order Time
               </span>
 
@@ -480,6 +612,30 @@ export default function Status() {
                     order.createdAt
                   ).toLocaleTimeString()
                   : order.time}
+              </strong>
+
+            </div>
+
+            <div className="order-info-row">
+
+              <span>
+                Estimated Time
+              </span>
+
+              <strong>
+                {estimateText}
+              </strong>
+
+            </div>
+
+            <div className="order-info-row">
+
+              <span>
+                Timer
+              </span>
+
+              <strong>
+                {liveTimerText}
               </strong>
 
             </div>
@@ -560,11 +716,24 @@ export default function Status() {
               available to help you.
             </p>
 
-            <button className="support-btn">
+            <button
+              className="support-btn"
+              onClick={() => {
+                if (waiterCooldownUntil > Date.now()) {
+                  return;
+                }
+                setShowWaiterModal(true);
+                setAssistanceMessage("");
+              }}
+              disabled={cooldownRemaining > 0}
+              style={{ opacity: cooldownRemaining > 0 ? 0.6 : 1 }}
+            >
 
-              <FaPhoneAlt />
+              <FaBell />
 
-              Contact Support
+              {cooldownRemaining > 0
+                ? `Waiter Called • ${Math.floor(cooldownRemaining / 60000)}:${String(Math.floor((cooldownRemaining % 60000) / 1000)).padStart(2, "0")}`
+                : "Call Waiter"}
 
             </button>
 
@@ -625,42 +794,74 @@ export default function Status() {
 
           </div>
 
-          {/* PREMIUM MESSAGE */}
+          {showWaiterModal && (
+            <div className="waiter-modal-overlay">
+              <div className="feedback-card waiter-modal-card">
+                <div className="feedback-header">
+                  <div className="feedback-icon">🚶</div>
+                  <div>
+                    <h2>Request a Waiter</h2>
+                    <p>We will send a waiter to your table.</p>
+                  </div>
+                </div>
 
-          <div className="premium-message">
+                <div className="rating-section" style={{ marginTop: "14px" }}>
+                  <h3>Name</h3>
+                  <input
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter your name"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid rgba(216,154,43,.35)", background: "rgba(0,0,0,.25)", color: "#fff" }}
+                  />
+                </div>
 
-            <div className="message-icon">
-              👨‍🍳
+                <div className="rating-section">
+                  <h3>Table Number</h3>
+                  <select
+                    value={tableNumber}
+                    onChange={(e) => setTableNumber(e.target.value)}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid rgba(216,154,43,.35)", background: "rgba(0,0,0,.25)", color: "#fff" }}
+                  >
+                    <option value="">Select table</option>
+                    {[...Array(30)].map((_, index) => (
+                      <option key={index + 1} value={String(index + 1)}>
+                        Table {index + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
+                  <button
+                    className="support-btn"
+                    onClick={requestWaiter}
+                    disabled={assistanceSubmitting}
+                    style={{ opacity: assistanceSubmitting ? 0.7 : 1 }}
+                  >
+                    {assistanceSubmitting ? "Sending..." : "Send Request"}
+                  </button>
+
+                  <button
+                    className="support-btn"
+                    onClick={() => {
+                      setShowWaiterModal(false);
+                      setAssistanceMessage("");
+                    }}
+                    style={{ background: "rgba(255,255,255,0.06)", color: "#fff" }}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {assistanceMessage && (
+                  <p style={{ marginTop: "12px", color: assistanceMessage.includes("Waiter") ? "#ffd777" : "#ffb4b4" }}>
+                    {assistanceMessage}
+                  </p>
+                )}
+              </div>
             </div>
+          )}
 
-            <div>
-
-              <h3>
-                Chef's Kitchen Update
-              </h3>
-
-              <p>
-
-                {order.status === "NEW" &&
-                  "Your order has been received and is waiting for kitchen confirmation."}
-
-                {order.status === "PREPARING" &&
-                  "Our chef is carefully preparing your dishes."}
-
-                {order.status === "READY" &&
-                  "Your food is ready and waiting for table service."}
-
-                {order.status === "ON_THE_WAY" &&
-                  "A waiter is bringing your order to your table."}
-
-                {order.status === "SERVED" &&
-                  "Your order has been successfully served. Enjoy your meal!"}
-
-              </p>
-
-            </div>
-
-          </div>
           {order.status === "SERVED" && (
             <div className="feedback-card">
 

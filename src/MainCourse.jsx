@@ -24,6 +24,7 @@ export default function MainCourse() {
     JSON.parse(localStorage.getItem("cart"))
       ?.length || 0
   );
+  const [expandedDescription, setExpandedDescription] = useState({});
 
   const storageData = (() => {
     try {
@@ -40,6 +41,14 @@ export default function MainCourse() {
   })();
 
   const categories = ["VEG", "NON VEG"];
+
+  const toggleDescription = (id) => {
+    setExpandedDescription((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const addToCart = (item) => {
     const existingCart =
       JSON.parse(
@@ -265,6 +274,38 @@ export default function MainCourse() {
                     <div className="dish-price">
                       ₹{item.price}
                     </div>
+
+                    <button
+                      className="add-cart-btn"
+                      onClick={() =>
+                        toggleDescription(item.id)
+                      }
+                      style={{
+                        marginTop: "10px",
+                        background: "#2a2a2a",
+                        color: "#f4c45f",
+                      }}
+                    >
+                      {expandedDescription[item.id]
+                        ? "Hide Description"
+                        : "Description"}
+                    </button>
+
+                    {expandedDescription[item.id] && (
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          background: "rgba(255,255,255,0.04)",
+                          color: "#f0f0f0",
+                          fontSize: "13px",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        {item.description || "No description available."}
+                      </div>
+                    )}
 
                     <button
                       className="add-cart-btn"

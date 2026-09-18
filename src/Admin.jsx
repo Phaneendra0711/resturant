@@ -6,7 +6,10 @@ export default function Admin() {
   const [dishes, setDishes] = useState([]);
   const [showCashCoupon, setShowCashCoupon] = useState(false);
   const [cashAmount, setCashAmount] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
   const [generatedCoupon, setGeneratedCoupon] = useState(null);
+  const [couponReceipt, setCouponReceipt] = useState(null);
   const [couponError, setCouponError] = useState("");
   const [generatingCoupon, setGeneratingCoupon] = useState(false);
 
@@ -48,13 +51,33 @@ export default function Admin() {
   // SAVE DISHES
   // ==========================================
 
+  const normalizeDish = (dish) => ({
+    ...dish,
+    description: typeof dish.description === "string" ? dish.description : "",
+  });
+
   const saveDishes = (updatedDishes) => {
-    setDishes(updatedDishes);
+    const normalized = (updatedDishes || []).map(normalizeDish);
+    setDishes(normalized);
 
     localStorage.setItem(
       "restaurantDishes",
-      JSON.stringify(updatedDishes)
+      JSON.stringify(normalized)
     );
+  };
+
+  const saveDish = (dishId, draftDish) => {
+    const updated = dishes.map((dish) =>
+      dish.id === dishId ? { ...dish, ...draftDish } : dish
+    );
+    saveDishes(updated);
+  };
+
+  const handleDishFieldChange = (id, field, value) => {
+    const updated = dishes.map((dish) =>
+      dish.id === id ? { ...dish, [field]: value } : dish
+    );
+    setDishes(updated);
   };
 
   // ==========================================
@@ -65,17 +88,14 @@ export default function Admin() {
     id,
     value
   ) => {
-    const updated = dishes.map(
-      (dish) =>
-        dish.id === id
-          ? {
-            ...dish,
-            price: Number(value),
-          }
-          : dish
-    );
+    handleDishFieldChange(id, "price", Number(value));
+  };
 
-    saveDishes(updated);
+  const handleDescriptionChange = (
+    id,
+    value
+  ) => {
+    handleDishFieldChange(id, "description", value);
   };
 
   // ==========================================
@@ -93,7 +113,7 @@ export default function Admin() {
           : dish
     );
 
-    saveDishes(updated);
+    setDishes(updated);
   };
 
   // ==========================================
@@ -110,19 +130,81 @@ export default function Admin() {
     navigate("/staff-login");
   };
 
+  const sanitizeWholeAmount = (value) => {
+    if (value === "") return "";
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "";
+    return String(Math.trunc(numeric));
+  };
+
+  const resetCouponModal = () => {
+    setGeneratedCoupon(null);
+    setCouponReceipt(null);
+    setCouponError("");
+    setCashAmount("");
+    setCustomerName("");
+    setTableNumber("");
+  };
+
+  const formatReceiptTime = (value) => {
+    if (!value) return "--";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "--";
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const generateCashCoupon = async (event) => {
     event.preventDefault();
     setCouponError("");
+
+    const trimmedName = customerName.trim();
+    const trimmedTable = tableNumber.toString().trim();
+    const normalizedAmount = Number(cashAmount);
+    const normalizedTable = Number(trimmedTable);
+
+    if (!trimmedName) {
+      setCouponError("Customer name is required");
+      return;
+    }
+
+    if (!trimmedTable || !Number.isInteger(normalizedTable) || normalizedTable < 1 || normalizedTable > 30) {
+      setCouponError("Select a table number from 1 to 30");
+      return;
+    }
+
+    if (!Number.isInteger(normalizedAmount) || normalizedAmount <= 0) {
+      setCouponError("Enter a whole positive cash amount");
+      return;
+    }
+
     setGeneratingCoupon(true);
     try {
       const response = await fetch("/api/coupons/cash", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(cashAmount), adminId: localStorage.getItem("staffId") }),
+        body: JSON.stringify({
+          amount: normalizedAmount,
+          customerName: trimmedName,
+          tableNumber: normalizedTable,
+          adminId: localStorage.getItem("staffId"),
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Unable to generate coupon");
       setGeneratedCoupon(data.coupon);
+      setCouponReceipt({
+        code: data.coupon.code,
+        amount: data.coupon.amount,
+        customerName: trimmedName,
+        tableNumber: trimmedTable,
+        createdAt: new Date().toISOString(),
+      });
     } catch (error) {
       setCouponError(error.message || "Coupon server is unavailable");
     } finally {
@@ -168,22 +250,38 @@ export default function Admin() {
 
       {showCashCoupon && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "grid", placeItems: "center", padding: 20 }}>
-          <form onSubmit={generateCashCoupon} style={{ width: 380, maxWidth: "100%", padding: 26, borderRadius: 16, background: "#171717", border: "1px solid #ffb347" }}>
+          <form onSubmit={generateCashCoupon} style={{ width: 420, maxWidth: "100%", padding: 26, borderRadius: 16, background: "#171717", border: "1px solid #ffb347" }}>
             <h2 style={{ color: "#ffb347", marginTop: 0 }}>Cash coupon</h2>
-            {generatedCoupon ? (
-              <div style={{ textAlign: "center", padding: 18, borderRadius: 10, background: "#0e2616" }}>
-                <div style={{ fontSize: 32, letterSpacing: 5, fontWeight: 800 }}>{generatedCoupon.code}</div>
-                <p style={{ color: "#7ee787" }}>Coupon value: ₹{generatedCoupon.amount}</p>
-                <button type="button" onClick={() => setShowCashCoupon(false)} style={{ padding: "10px 18px", border: 0, borderRadius: 8, cursor: "pointer" }}>Done</button>
+            {generatedCoupon && couponReceipt ? (
+              <div style={{ textAlign: "left", padding: 18, borderRadius: 12, background: "#0f1f14", border: "1px solid rgba(126,231,135,.35)" }}>
+                <div style={{ textAlign: "center", fontWeight: 800, letterSpacing: 2, color: "#ffd27d", marginBottom: 18 }}>COUPON RECEIPT</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ color: "#bbb" }}>Code</span><strong style={{ letterSpacing: 2 }}>{couponReceipt.code}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ color: "#bbb" }}>Amount</span><strong>₹{couponReceipt.amount}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ color: "#bbb" }}>Customer</span><strong>{couponReceipt.customerName}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ color: "#bbb" }}>Table No</span><strong>{couponReceipt.tableNumber}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ color: "#bbb" }}>Time</span><strong>{formatReceiptTime(couponReceipt.createdAt)}</strong></div>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                  <button type="button" onClick={() => { resetCouponModal(); setShowCashCoupon(false); }} style={{ flex: 1, padding: "10px 18px", border: 0, borderRadius: 8, cursor: "pointer", background: "#4caf50", color: "white", fontWeight: "bold" }}>Done</button>
+                  <button type="button" onClick={() => window.print()} style={{ flex: 1, padding: "10px 18px", border: 0, borderRadius: 8, cursor: "pointer", background: "#ffb347", color: "#111", fontWeight: "bold" }}>Print</button>
+                </div>
               </div>
             ) : (
               <>
-                <p style={{ color: "#aaa" }}>Enter the cash amount received from the customer.</p>
-                <input required type="number" min="1" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Amount (₹)" style={{ width: "100%", padding: 12, borderRadius: 8, boxSizing: "border-box" }} />
+                <p style={{ color: "#aaa" }}>Enter customer details and amount to generate the cash coupon.</p>
+                <input required value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Customer name" style={{ width: "100%", padding: 12, borderRadius: 8, boxSizing: "border-box", marginBottom: 10 }} />
+                <select required value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} style={{ width: "100%", padding: 12, borderRadius: 8, boxSizing: "border-box", marginBottom: 10, background: "#111", color: "white" }}>
+                  <option value="">Select table number</option>
+                  {Array.from({ length: 30 }, (_, index) => index + 1).map((num) => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+                <input required type="number" min="1" step="1" value={cashAmount} onChange={(e) => setCashAmount(sanitizeWholeAmount(e.target.value))} placeholder="Amount (₹)" style={{ width: "100%", padding: 12, borderRadius: 8, boxSizing: "border-box" }} />
                 {couponError && <p style={{ color: "#ff7777", marginBottom: 0 }}>{couponError}</p>}
                 <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
                   <button type="submit" disabled={generatingCoupon} style={{ flex: 1, padding: 11, background: "#4caf50", color: "white", border: 0, borderRadius: 8, fontWeight: "bold" }}>{generatingCoupon ? "Generating..." : "Generate code"}</button>
-                  <button type="button" onClick={() => setShowCashCoupon(false)} style={{ flex: 1, padding: 11, background: "#444", color: "white", border: 0, borderRadius: 8 }}>Cancel</button>
+                  <button type="button" onClick={() => { resetCouponModal(); setShowCashCoupon(false); }} style={{ flex: 1, padding: 11, background: "#444", color: "white", border: 0, borderRadius: 8 }}>Cancel</button>
                 </div>
               </>
             )}
@@ -225,65 +323,40 @@ export default function Admin() {
             flexWrap: "wrap",
           }}
         >
-
-          {/* PERFORMANCE & ORDERS */}
-
           <button
-            onClick={() =>
-              navigate(
-                "/admin/performance"
-              )
-            }
+            onClick={() => navigate("/admin/performance")}
             style={{
-              padding:
-                "13px 22px",
-              background:
-                "#ffb347",
+              padding: "13px 22px",
+              background: "#ffb347",
               color: "#111",
               border: "none",
-              borderRadius:
-                "12px",
-              fontWeight:
-                "bold",
-              cursor:
-                "pointer",
-              fontSize:
-                "15px",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "15px",
             }}
           >
             Performance & Orders
           </button>
 
-          {/* MANAGE STAFF */}
-
           <button
-            onClick={() =>
-              navigate(
-                "/admin/staff"
-              )
-            }
+            onClick={() => navigate("/admin/staff")}
             style={{
-              padding:
-                "13px 22px",
-              background:
-                "#ffb347",
+              padding: "13px 22px",
+              background: "#ffb347",
               color: "#111",
               border: "none",
-              borderRadius:
-                "12px",
-              fontWeight:
-                "bold",
-              cursor:
-                "pointer",
-              fontSize:
-                "15px",
+              borderRadius: "12px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "15px",
             }}
           >
             Manage Staff
           </button>
 
           <button
-            onClick={() => { setCashAmount(""); setGeneratedCoupon(null); setCouponError(""); setShowCashCoupon(true); }}
+            onClick={() => { setCashAmount(""); setCustomerName(""); setTableNumber(""); setGeneratedCoupon(null); setCouponReceipt(null); setCouponError(""); setShowCashCoupon(true); }}
             style={{ padding: "13px 22px", background: "#4caf50", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "15px" }}
           >
             Cash Coupon
@@ -316,148 +389,6 @@ export default function Admin() {
           </button>
 
         </div>
-      </div>
-
-      {/* ======================================
-          ADMIN OVERVIEW
-      ====================================== */}
-
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          textAlign: "center",
-          marginBottom: "55px",
-        }}
-      >
-
-        <h2
-          style={{
-            fontSize: "32px",
-            marginBottom: "10px",
-          }}
-        >
-          Restaurant Administration
-        </h2>
-
-        <p
-          style={{
-            color: "#888",
-            fontSize: "17px",
-            marginBottom: "35px",
-          }}
-        >
-          Manage your restaurant
-          operations from one place
-        </p>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(280px,1fr))",
-            gap: "25px",
-          }}
-        >
-
-          {/* PERFORMANCE CARD */}
-
-          <div
-            onClick={() =>
-              navigate(
-                "/admin/performance"
-              )
-            }
-            style={{
-              background:
-                "#1b1b1b",
-              padding: "32px",
-              borderRadius:
-                "20px",
-              border:
-                "1px solid rgba(255,179,71,.18)",
-              cursor:
-                "pointer",
-              transition:
-                "transform .2s",
-            }}
-          >
-
-            <h2
-              style={{
-                color:
-                  "#ffb347",
-                marginTop: 0,
-              }}
-            >
-              📊 Performance & Orders
-            </h2>
-
-            <p
-              style={{
-                color:
-                  "#999",
-                lineHeight:
-                  "1.6",
-              }}
-            >
-              View orders, revenue,
-              staff performance
-              and customer
-              feedback.
-            </p>
-
-          </div>
-
-          {/* STAFF CARD */}
-
-          <div
-            onClick={() =>
-              navigate(
-                "/admin/staff"
-              )
-            }
-            style={{
-              background:
-                "#1b1b1b",
-              padding: "32px",
-              borderRadius:
-                "20px",
-              border:
-                "1px solid rgba(255,179,71,.18)",
-              cursor:
-                "pointer",
-            }}
-          >
-
-            <h2
-              style={{
-                color:
-                  "#ffb347",
-                marginTop: 0,
-              }}
-            >
-              👥 Manage Staff
-            </h2>
-
-            <p
-              style={{
-                color:
-                  "#999",
-                lineHeight:
-                  "1.6",
-              }}
-            >
-              Add, remove,
-              enable, disable
-              and manage
-              employee accounts.
-            </p>
-
-          </div>
-
-        </div>
-
       </div>
 
       {/* ======================================
@@ -751,43 +682,134 @@ export default function Admin() {
 
                       </div>
 
-                      {/* HIDE / SHOW */}
+                      {/* DESCRIPTION */}
 
-                      <button
-                        onClick={() =>
-                          toggleDish(
-                            dish.id
-                          )
-                        }
+                      <div
                         style={{
-                          width:
-                            "100%",
                           marginTop:
-                            "15px",
-                          padding:
-                            "14px",
-                          border:
-                            "none",
-                          borderRadius:
-                            "10px",
-                          cursor:
-                            "pointer",
-                          fontWeight:
-                            "bold",
-                          fontSize:
-                            "15px",
-                          background:
-                            dish.enabled
-                              ? "#ff4d4d"
-                              : "#4caf50",
-                          color:
-                            "white",
+                            "12px",
                         }}
                       >
-                        {dish.enabled
-                          ? "Hide Dish"
-                          : "Show Dish"}
-                      </button>
+
+                        <label
+                          style={{
+                            display:
+                              "block",
+                            marginBottom:
+                              "5px",
+                            color:
+                              "#ddd",
+                          }}
+                        >
+                          Description
+                        </label>
+
+                        <textarea
+                          value={
+                            dish.description || ""
+                          }
+                          onChange={(e) => handleDescriptionChange(dish.id, e.target.value)}
+                          placeholder="Add short dish description"
+                          rows={3}
+                          style={{
+                            width:
+                              "100%",
+                            padding:
+                              "11px",
+                            marginTop:
+                              "2px",
+                            borderRadius:
+                              "8px",
+                            border:
+                              "none",
+                            boxSizing:
+                              "border-box",
+                            fontSize:
+                              "15px",
+                            resize:
+                              "vertical",
+                            background:
+                              "#111",
+                            color:
+                              "white",
+                          }}
+                        />
+
+                      </div>
+
+                      {/* HIDE / SHOW */}
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          marginTop: "15px",
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            toggleDish(
+                              dish.id
+                            )
+                          }
+                          style={{
+                            flex: 1,
+                            padding:
+                              "14px",
+                            border:
+                              "none",
+                            borderRadius:
+                              "10px",
+                            cursor:
+                              "pointer",
+                            fontWeight:
+                              "bold",
+                            fontSize:
+                              "15px",
+                            background:
+                              dish.enabled
+                                ? "#ff4d4d"
+                                : "#4caf50",
+                            color:
+                              "white",
+                          }}
+                        >
+                          {dish.enabled
+                            ? "Hide Dish"
+                            : "Show Dish"}
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            saveDish(dish.id, {
+                              price: Number(dish.price),
+                              description: String(dish.description || ""),
+                              enabled: Boolean(dish.enabled),
+                            })
+                          }
+                          style={{
+                            flex: 1,
+                            padding:
+                              "14px",
+                            border:
+                              "none",
+                            borderRadius:
+                              "10px",
+                            cursor:
+                              "pointer",
+                            fontWeight:
+                              "bold",
+                            fontSize:
+                              "15px",
+                            background:
+                              "#ffb347",
+                            color:
+                              "#111",
+                          }}
+                        >
+                          Save
+                        </button>
+                      </div>
 
                     </div>
 

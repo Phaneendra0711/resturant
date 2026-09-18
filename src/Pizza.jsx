@@ -23,6 +23,7 @@ export default function Pizza() {
     JSON.parse(localStorage.getItem("cart"))
       ?.length || 0
   );
+  const [expandedDescription, setExpandedDescription] = useState({});
 
   const storageData =
     JSON.parse(
@@ -37,6 +38,13 @@ export default function Pizza() {
       "PIZZA" &&
       d.enabled === true
   );
+
+  const toggleDescription = (id) => {
+    setExpandedDescription((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const addToCart = (item) => {
     const existingCart =
@@ -221,6 +229,38 @@ export default function Pizza() {
                 <div className="pizza-price-row">
                   ₹{p.price}
                 </div>
+
+                <button
+                  className="pizza-add-btn"
+                  onClick={() =>
+                    toggleDescription(p.id)
+                  }
+                  style={{
+                    marginTop: "10px",
+                    background: "#2a2a2a",
+                    color: "#f4c45f",
+                  }}
+                >
+                  {expandedDescription[p.id]
+                    ? "Hide Description"
+                    : "Description"}
+                </button>
+
+                {expandedDescription[p.id] && (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      background: "rgba(255,255,255,0.04)",
+                      color: "#f0f0f0",
+                      fontSize: "13px",
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    {p.description || "No description available."}
+                  </div>
+                )}
 
                 <button
                   className="pizza-add-btn"

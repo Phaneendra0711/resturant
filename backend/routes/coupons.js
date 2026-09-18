@@ -12,9 +12,21 @@ router.get("/", async (_req, res) => {
 
 router.post("/cash", async (req, res) => {
   try {
-    const { amount, adminId } = req.body;
-    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
-      return res.status(400).json({ success: false, message: "Enter a positive cash amount" });
+    const { amount, customerName, tableNumber, adminId } = req.body;
+    const normalizedAmount = Number(amount);
+    const normalizedTableNumber = Number(tableNumber);
+    const cleanCustomerName = String(customerName || "").trim();
+
+    if (!cleanCustomerName) {
+      return res.status(400).json({ success: false, message: "Customer name is required" });
+    }
+
+    if (!Number.isInteger(normalizedTableNumber) || normalizedTableNumber < 1 || normalizedTableNumber > 30) {
+      return res.status(400).json({ success: false, message: "Select a table number from 1 to 30" });
+    }
+
+    if (!Number.isInteger(normalizedAmount) || normalizedAmount <= 0) {
+      return res.status(400).json({ success: false, message: "Enter a whole positive cash amount" });
     }
     // Existing browser sessions may predate the stored staffId. Until server
     // authentication is added, let that old admin session issue through the
@@ -28,7 +40,12 @@ router.post("/cash", async (req, res) => {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       try {
         coupon = await Coupon.create({
-          code: newCode(), amount: Number(amount), issuedById: admin._id, issuedByName: admin.name,
+          code: newCode(),
+          amount: normalizedAmount,
+          customerName: cleanCustomerName,
+          tableNumber: normalizedTableNumber,
+          issuedById: admin._id,
+          issuedByName: admin.name,
         });
         break;
       } catch (error) {

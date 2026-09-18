@@ -83,6 +83,12 @@ const normalizeServicePreference = (item) => {
 
 const isFood = (item) => !isServiceItem(item);
 
+const getFoodPriorityValue = (item) => {
+  const text = String(item?.preference || "").trim().toUpperCase();
+  const match = text.match(/\d+/);
+  return match ? Number(match[0]) : 999;
+};
+
 const secondsBetween = (from, to = new Date()) => Math.max(
   0,
   Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 1000)
@@ -145,8 +151,6 @@ const updateOverallOrderStatus = (order) => {
     return;
   }
 
-  const foodItems = items.filter(isFood);
-
   const allServed = items.every(
     (item) => item.status === "SERVED"
   );
@@ -156,38 +160,22 @@ const updateOverallOrderStatus = (order) => {
     return;
   }
 
+  // Order stage is driven only by food activity. Service items must not move
+  // the overall order state while food is still pending.
+  const foodItems = items.filter(isFood);
+
   if (foodItems.length > 0) {
-    // Kitchen work takes precedence in the order summary. Serving the
-    // first ready group must not make an order leave PREPARING while later
-    // food items are still being cooked.
-    const anyFoodPreparing = foodItems.some(
-      (item) => item.status === "PREPARING"
-    );
-
-    if (anyFoodPreparing) {
-      order.status = "PREPARING";
-      return;
-    }
-
-    const allFoodReady = foodItems.every(
+    const hasStartedFood = foodItems.some(
       (item) =>
-        item.status === "READY" ||
-        item.status === "SERVED"
+        ["PREPARING", "READY", "ON_THE_WAY", "SERVED"].includes(item.status)
     );
 
-    if (allFoodReady) {
-      order.status = "READY";
+    if (!hasStartedFood) {
+      order.status = "NEW";
       return;
     }
 
-  }
-
-  const anyOnTheWay = items.some(
-    (item) => item.status === "ON_THE_WAY"
-  );
-
-  if (anyOnTheWay) {
-    order.status = "ON_THE_WAY";
+    order.status = "PREPARING";
     return;
   }
 
@@ -322,34 +310,32 @@ router.post("/", async (req, res) => {
       -------------------------------------------------------
     */
 
-    const foodItems = rawNormalizedItems.filter(
+    const getPreferenceNumber = (item) => {
+      const text = String(
+        item.preference || ""
+      ).toUpperCase();
+
+      const match = text.match(/\d+/);
+
+      return match
+        ? Number(match[0])
+        : 999;
+    };
+
+    const orderedItems = [...rawNormalizedItems].sort((a, b) => {
+      const aPriority = getPreferenceNumber(a);
+      const bPriority = getPreferenceNumber(b);
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+
+    const foodItems = orderedItems.filter(
       (item) => item.serviceType === "FOOD"
     );
-
-    /*
-      -------------------------------------------------------
-      SORT FOOD BY PREFERENCE
-      -------------------------------------------------------
-    */
-
-    foodItems.sort((a, b) => {
-      const getPreferenceNumber = (item) => {
-        const text = String(
-          item.preference || ""
-        ).toUpperCase();
-
-        const match = text.match(/\d+/);
-
-        return match
-          ? Number(match[0])
-          : 999;
-      };
-
-      return (
-        getPreferenceNumber(a) -
-        getPreferenceNumber(b)
-      );
-    });
 
     /*
       -------------------------------------------------------
@@ -455,7 +441,7 @@ router.post("/", async (req, res) => {
     };
 
     const calculatedItems =
-      rawNormalizedItems.map((item) => {
+      orderedItems.map((item) => {
         const service =
           item.serviceType === "SERVICE";
 
@@ -481,6 +467,9 @@ router.post("/", async (req, res) => {
             servicePreference:
               item.servicePreference,
 
+            whenToServe:
+              item.servicePreference || "NOW",
+
             serviceGroup:
               item.servicePreference,
 
@@ -497,7 +486,7 @@ router.post("/", async (req, res) => {
             chefGreenMinutes: 0,
             chefOrangeMinutes: 0,
 
-            status: "NEW",
+            status: "WAITING",
 
             acceptedAt: null,
             readyAt: null,
@@ -573,7 +562,7 @@ router.post("/", async (req, res) => {
           chefGreenMinutes,
           chefOrangeMinutes,
 
-          status: "NEW",
+          status: "ORDERED",
 
           acceptedAt: null,
           readyAt: null,
@@ -1154,7 +1143,7 @@ router.patch(
 
         const foodItems = order.items.filter(isFood);
         const unavailableService = groupItems.find((item) => {
-          if (isFood(item) || item.status !== "NEW") return false;
+          if (isFood(item) || item.status !== "WAITING") return false;
 
           const preference = String(
             item.servicePreference || item.serviceGroup || "NOW"
@@ -1199,6 +1188,9 @@ router.patch(
           item.waiterAssignedAt = now;
           item.waiterId = staffId;
           item.waiterName = staffName || "";
+          if (!isFood(item)) {
+            item.whenToServe = item.whenToServe || item.servicePreference || "NOW";
+          }
         });
 
         order.waiter.staffId = staffId;
@@ -1382,16 +1374,6 @@ router.patch(
 
         await order.save();
 
-        const timerCredit = chefTimerPoints(item, now);
-        if (timerCredit.points !== 0) {
-          await addCredits({
-            staffId: item.chefId, staffName: item.chefName, role: "CHEF",
-            points: timerCredit.points, reason: timerCredit.reason,
-            orderId: order._id, itemId: String(item._id),
-            elapsedSeconds: timerCredit.elapsedSeconds,
-          });
-        }
-
         return res.json({
           success: true,
           message:
@@ -1433,7 +1415,9 @@ router.patch(
               )
           );
 
-        const foodItems = order.items.filter(isFood);
+        const foodItems = [...order.items.filter(isFood)].sort(
+          (a, b) => getFoodPriorityValue(a) - getFoodPriorityValue(b)
+        );
 
         const foodIndex =
           foodItems.findIndex(
@@ -1459,10 +1443,7 @@ router.patch(
               .slice(0, foodIndex)
               .find(
                 (previous) =>
-                  previous.status !==
-                    "READY" &&
-                  previous.status !==
-                    "SERVED"
+                  !["READY", "ON_THE_WAY", "SERVED"].includes(previous.status)
               );
 
           if (previousFood) {
@@ -1482,7 +1463,7 @@ router.patch(
           });
         }
 
-        if (!["PREPARING", "NEW"].includes(item.status)) {
+        if (!["PREPARING", "ORDERED"].includes(item.status)) {
           return res.status(409).json({
             success: false,
             message: `Food item "${item.name}" is already ${item.status.replaceAll("_", " ")}.`,
@@ -1527,6 +1508,20 @@ router.patch(
         }
 
         await order.save();
+
+        const timerCredit = chefTimerPoints(item, now);
+        if (timerCredit.points !== 0) {
+          await addCredits({
+            staffId: item.chefId,
+            staffName: item.chefName,
+            role: "CHEF",
+            points: timerCredit.points,
+            reason: timerCredit.reason,
+            orderId: order._id,
+            itemId: String(item._id),
+            elapsedSeconds: timerCredit.elapsedSeconds,
+          });
+        }
 
         return res.json({
           success: true,
@@ -1573,10 +1568,24 @@ router.patch(
 
         /*
           SERVICE:
+          must be waiting
           NOW  → immediately
           FIRST → first food ready
           LAST  → last food ready
         */
+
+        if (
+          item.serviceType ===
+          "SERVICE" &&
+          item.status !==
+          "WAITING"
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              "This service item is not waiting to be served.",
+          });
+        }
 
         if (
           item.serviceType ===

@@ -567,8 +567,8 @@ export default function Chef() {
         SEQUENTIAL CHECK
         --------------------------------------------------
   
-        Every item before the selected item
-        must already be READY.
+        Every earlier food item must already be in a completed state:
+        READY, ON_THE_WAY, or SERVED.
       */
 
       const previousItems =
@@ -580,7 +580,7 @@ export default function Chef() {
       const unfinishedPreviousItem =
         previousItems.find(
           (item) =>
-            item.status !== "READY"
+            !["READY", "ON_THE_WAY", "SERVED"].includes(item.status)
         );
 
       if (unfinishedPreviousItem) {
@@ -1053,8 +1053,13 @@ export default function Chef() {
           <div className="chef-orders">
             {filteredOrders.map(
               (order) => {
+                const getPriority = (item) => {
+                  const match = String(item.preference || "").match(/\d+/);
+                  return match ? Number(match[0]) : 999;
+                };
+
                 const orderItems =
-                  (order.items || []).filter(isFoodItem);
+                  [...(order.items || []).filter(isFoodItem)].sort((a, b) => getPriority(a) - getPriority(b));
 
                 const visibleItems =
                   activeTab === "READY"
@@ -1210,15 +1215,18 @@ export default function Chef() {
                             item.status ===
                             "READY";
 
+                          const isOnTheWay =
+                            item.status ===
+                            "ON_THE_WAY";
+
+                          const isServed =
+                            item.status ===
+                            "SERVED";
+
                           const isPreparing =
-                            item.status === "PREPARING" ||
-                            (
-                              order.status === "PREPARING" &&
-                              item.status !== "READY"
-                            );
+                            item.status === "PREPARING";
 
                           const isNew =
-                            order.status === "NEW" &&
                             item.status === "NEW";
 
                           const itemId =
@@ -1231,12 +1239,11 @@ export default function Chef() {
                           const previousItemsReady =
                             previousItems.every(
                               (previousItem) =>
-                                previousItem.status ===
-                                "READY"
+                                ["READY", "ON_THE_WAY", "SERVED"].includes(previousItem.status)
                             );
 
                           const canMarkReady =
-                            isPreparing &&
+                            item.status === "PREPARING" &&
                             previousItemsReady;
 
                           return (
@@ -1444,7 +1451,7 @@ export default function Chef() {
                                       marginTop:
                                         "12px",
                                       color:
-                                        isReady
+                                        isReady || isOnTheWay || isServed
                                           ? "#22c55e"
                                           : isPreparing
                                             ? "#f59e0b"
@@ -1459,9 +1466,13 @@ export default function Chef() {
                                   >
                                     {isReady
                                       ? "✓ READY FOR SERVICE"
-                                      : isPreparing
-                                        ? "● PREPARING"
-                                        : "● WAITING FOR CHEF"}
+                                      : isOnTheWay
+                                        ? "✓ ON THE WAY"
+                                        : isServed
+                                          ? "✓ SERVED"
+                                          : isPreparing
+                                            ? "● PREPARING"
+                                            : "● WAITING FOR CHEF"}
                                   </div>
                                 </div>
 
@@ -1519,7 +1530,7 @@ export default function Chef() {
                                   </div>
                                 )}
 
-                                {isReady && (
+                                {(isReady || isOnTheWay || isServed) && (
                                   <div
                                     style={{
                                       display:
@@ -1559,18 +1570,32 @@ export default function Chef() {
                                         textAlign:
                                           "center",
                                         background:
-                                          "rgba(34,197,94,0.10)",
+                                          isOnTheWay
+                                            ? "rgba(59,130,246,0.10)"
+                                            : isServed
+                                              ? "rgba(34,197,94,0.10)"
+                                              : "rgba(34,197,94,0.10)",
                                         border:
-                                          "1px solid rgba(34,197,94,0.28)",
+                                          isOnTheWay
+                                            ? "1px solid rgba(59,130,246,0.28)"
+                                            : isServed
+                                              ? "1px solid rgba(34,197,94,0.28)"
+                                              : "1px solid rgba(34,197,94,0.28)",
                                         color:
-                                          "#22c55e",
+                                          isOnTheWay
+                                            ? "#60a5fa"
+                                            : "#22c55e",
                                         fontSize:
                                           "12px",
                                         fontWeight:
                                           "800",
                                       }}
                                     >
-                                      ✓ READY FOR SERVICE
+                                      {isOnTheWay
+                                        ? "🚚 ON THE WAY"
+                                        : isServed
+                                          ? "✓ SERVED"
+                                          : "✓ READY FOR SERVICE"}
                                     </div>
                                   </div>
                                 )}

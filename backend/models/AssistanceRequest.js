@@ -14,6 +14,28 @@ const assistanceRequestSchema = new mongoose.Schema(
             enum: Array.from({ length: 30 }, (_, i) => String(i + 1)),
         },
 
+        type: {
+            type: String,
+            enum: ["ASSISTANCE", "CASH_PAYMENT"],
+            default: "ASSISTANCE",
+        },
+
+        paymentType: {
+            type: String,
+            enum: ["CASH", "CARD", "UPI"],
+            default: "CASH",
+        },
+
+        message: {
+            type: String,
+            default: "",
+        },
+
+        grandTotal: {
+            type: Number,
+            default: 0,
+        },
+
         status: {
             type: String,
             enum: ["ACTIVE", "ACCEPTED", "COMPLETED"],
@@ -35,10 +57,16 @@ const assistanceRequestSchema = new mongoose.Schema(
             default: "",
         },
 
+        acceptedByName: {
+            type: String,
+            default: "",
+        },
+
         acceptedById: {
             type: String,
             default: "",
         },
+
         completedAt: {
             type: Date,
             default: null,

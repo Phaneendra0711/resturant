@@ -256,13 +256,14 @@ const orderItemSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
-        "NEW",
+        "ORDERED",
         "PREPARING",
         "READY",
         "ON_THE_WAY",
         "SERVED",
+        "WAITING",
       ],
-      default: "NEW",
+      default: "ORDERED",
     },
   },
   {
@@ -356,8 +357,6 @@ const orderSchema = new mongoose.Schema(
       enum: [
         "NEW",
         "PREPARING",
-        "READY",
-        "ON_THE_WAY",
         "SERVED",
       ],
       default: "NEW",

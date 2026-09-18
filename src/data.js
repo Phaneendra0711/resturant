@@ -160,6 +160,11 @@ import IC9 from "./assets/IC9.png";
 import IC10 from "./assets/IC10.png";
 
 
+const withDefaultDescription = (dish) => ({
+  ...dish,
+  description: typeof dish.description === "string" ? dish.description : "",
+});
+
 export const dishesData = [
 
   /* =========================
