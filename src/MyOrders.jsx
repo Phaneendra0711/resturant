@@ -15,9 +15,14 @@ import {
   FaUtensils,
   FaArrowRight,
   FaSyncAlt,
+  FaShoppingBag,
 } from "react-icons/fa";
 
+import "./MyOrders.css";
+
+
 export default function MyOrders() {
+
   const navigate = useNavigate();
 
   const [orders, setOrders] =
@@ -26,27 +31,32 @@ export default function MyOrders() {
   const [loading, setLoading] =
     useState(true);
 
+
   // ==========================================
   // LOAD CUSTOMER ORDERS
   // ==========================================
 
   const loadOrders = async () => {
+
     try {
+
       setLoading(true);
 
       const storedOrders =
         JSON.parse(
-          localStorage.getItem(
-            "orders"
-          )
+          localStorage.getItem("orders")
         ) || [];
+
 
       if (
         storedOrders.length === 0
       ) {
+
         setOrders([]);
+
         return;
       }
+
 
       /*
         Refresh every locally stored
@@ -58,81 +68,107 @@ export default function MyOrders() {
         await Promise.all(
           storedOrders.map(
             async (localOrder) => {
+
               try {
+
                 if (
                   !localOrder._id
                 ) {
+
                   return localOrder;
                 }
+
 
                 const response =
                   await fetch(
                     `/api/orders/${localOrder._id}`
                   );
 
+
                 if (!response.ok) {
+
                   return localOrder;
                 }
 
+
                 const data =
                   await response.json();
+
 
                 return (
                   data.order ||
                   localOrder
                 );
+
               } catch {
+
                 return localOrder;
               }
+
             }
           )
         );
 
-// ==========================================
-// SORT ORDERS
-// OLDEST → NEWEST
-// NEWEST ORDER WILL BE AT THE BOTTOM
-// ==========================================
 
-const sortedOrders = [...updatedOrders].sort(
-  (a, b) => {
-    const idA = String(a?._id || "");
-    const idB = String(b?._id || "");
+      // ==========================================
+      // SORT ORDERS
+      // OLDEST → NEWEST
+      // NEWEST ORDER AT BOTTOM
+      // ==========================================
 
-    return idB.localeCompare(idA);
-  }
-);
+      const sortedOrders =
+        [...updatedOrders].sort(
+          (a, b) => {
 
-console.log(
-  "ORDER DISPLAY ORDER:",
-  sortedOrders.map((order, index) => ({
-    position: index + 1,
-    id: order._id,
-    customer: order.customerName,
-    createdAt: order.createdAt,
-  }))
-);
+            const idA =
+              String(
+                a?._id || ""
+              );
 
-setOrders(sortedOrders);
+            const idB =
+              String(
+                b?._id || ""
+              );
+
+            return idB.localeCompare(
+              idA
+            );
+          }
+        );
+
+
+      setOrders(
+        sortedOrders
+      );
+
     } catch (error) {
+
       console.error(
         "Failed to load orders:",
         error
       );
 
       setOrders([]);
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
+
 
   // ==========================================
   // INITIAL LOAD
   // ==========================================
 
   useEffect(() => {
+
     loadOrders();
+
   }, []);
+
 
   // ==========================================
   // TRACK ORDER
@@ -141,7 +177,9 @@ setOrders(sortedOrders);
   const trackOrder = (
     order
   ) => {
+
     if (!order?._id) {
+
       alert(
         "Order tracking information is unavailable."
       );
@@ -149,18 +187,17 @@ setOrders(sortedOrders);
       return;
     }
 
-    /*
-      Tell Status.jsx which
-      order should be displayed.
-    */
 
     localStorage.setItem(
       "activeOrderId",
       order._id
     );
 
+
     navigate("/status");
+
   };
+
 
   // ==========================================
   // STATUS TEXT
@@ -169,7 +206,9 @@ setOrders(sortedOrders);
   const getStatusText = (
     status
   ) => {
+
     switch (status) {
+
       case "NEW":
         return "Order Placed";
 
@@ -187,36 +226,44 @@ setOrders(sortedOrders);
 
       default:
         return "Order Placed";
+
     }
+
   };
+
 
   // ==========================================
   // STATUS COLOR
   // ==========================================
 
-  const getStatusColor = (
+  const getStatusClass = (
     status
   ) => {
+
     switch (status) {
+
       case "NEW":
-        return "#d89a2b";
+        return "status-new";
 
       case "PREPARING":
-        return "#ff9f43";
+        return "status-preparing";
 
       case "READY":
-        return "#2ecc71";
+        return "status-ready";
 
       case "ON_THE_WAY":
-        return "#3498db";
+        return "status-way";
 
       case "SERVED":
-        return "#27ae60";
+        return "status-served";
 
       default:
-        return "#d89a2b";
+        return "status-new";
+
     }
+
   };
+
 
   // ==========================================
   // FORMAT DATE
@@ -225,20 +272,26 @@ setOrders(sortedOrders);
   const formatDate = (
     value
   ) => {
+
     if (!value) {
+
       return "Recently";
     }
 
+
     const date =
       new Date(value);
+
 
     if (
       Number.isNaN(
         date.getTime()
       )
     ) {
+
       return "Recently";
     }
+
 
     return date.toLocaleString(
       "en-IN",
@@ -250,7 +303,9 @@ setOrders(sortedOrders);
         minute: "2-digit",
       }
     );
+
   };
+
 
   // ==========================================
   // TOTAL
@@ -259,12 +314,15 @@ setOrders(sortedOrders);
   const getTotal = (
     order
   ) => {
+
     if (
       order.totalAmount !==
       undefined
     ) {
+
       return order.totalAmount;
     }
+
 
     return (
       order.items || []
@@ -273,6 +331,7 @@ setOrders(sortedOrders);
         total,
         item
       ) =>
+
         total +
         Number(
           item.price || 0
@@ -282,9 +341,41 @@ setOrders(sortedOrders);
           item.qty ??
           1
         ),
+
       0
     );
+
   };
+
+
+  // ==========================================
+  // ITEM COUNT
+  // ==========================================
+
+  const getItemCount = (
+    order
+  ) => {
+
+    return (
+      order.items || []
+    ).reduce(
+      (
+        total,
+        item
+      ) =>
+
+        total +
+        Number(
+          item.quantity ??
+          item.qty ??
+          1
+        ),
+
+      0
+    );
+
+  };
+
 
   // ==========================================
   // EMPTY STATE
@@ -294,708 +385,562 @@ setOrders(sortedOrders);
     !loading &&
     orders.length === 0
   ) {
+
     return (
-      <div
-        style={{
-          minHeight:
-            "100vh",
-          background:
-            "linear-gradient(180deg,#050505,#111)",
-          color: "white",
-          padding:
-            "30px",
-          fontFamily:
-            "Arial, sans-serif",
-        }}
-      >
-        {/* HEADER */}
 
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "space-between",
-            alignItems:
-              "center",
-            marginBottom:
-              "50px",
-          }}
+      <div className="my-orders-page">
+
+        <div className="orders-background-glow glow-one" />
+        <div className="orders-background-glow glow-two" />
+
+
+        {/* HOME BUTTON */}
+
+        <button
+          className="orders-home-button"
+          onClick={() =>
+            navigate("/home")
+          }
         >
-          <h1
-            style={{
-              color:
-                "#d89a2b",
-              fontSize:
-                "40px",
-              margin: 0,
-            }}
-          >
-            MY ORDERS
-          </h1>
 
-          <button
-            onClick={() =>
-              navigate(
-                "/home"
-              )
-            }
-            style={{
-              padding:
-                "13px 22px",
-              background:
-                "#d89a2b",
-              color:
-                "#111",
-              border:
-                "none",
-              borderRadius:
-                "12px",
-              cursor:
-                "pointer",
-              fontWeight:
-                "bold",
-              display:
-                "flex",
-              alignItems:
-                "center",
-              gap:
-                "8px",
-            }}
-          >
-            <FaHome />
+          <FaHome />
+
+          <span>
             HOME
-          </button>
+          </span>
+
+        </button>
+
+
+        {/* EMPTY CARD */}
+
+        <div className="empty-orders-wrapper">
+
+          <div className="empty-orders-card">
+
+            <div className="empty-icon">
+
+              <FaReceipt />
+
+            </div>
+
+
+            <div className="empty-label">
+
+              ORDER HISTORY
+
+            </div>
+
+
+            <h1>
+              No Orders Yet
+            </h1>
+
+
+            <p>
+              Your placed orders will
+              appear here automatically.
+            </p>
+
+
+            <button
+              className="start-order-button"
+              onClick={() =>
+                navigate("/home")
+              }
+            >
+
+              <FaUtensils />
+
+              START ORDERING
+
+              <FaArrowRight />
+
+            </button>
+
+          </div>
+
         </div>
 
-        {/* EMPTY */}
-
-        <div
-          style={{
-            maxWidth:
-              "650px",
-            margin:
-              "100px auto",
-            textAlign:
-              "center",
-            background:
-              "#151515",
-            border:
-              "1px solid rgba(216,154,43,.25)",
-            borderRadius:
-              "25px",
-            padding:
-              "60px 30px",
-            boxShadow:
-              "0 20px 60px rgba(0,0,0,.35)",
-          }}
-        >
-          <FaReceipt
-            style={{
-              fontSize:
-                "60px",
-              color:
-                "#d89a2b",
-              marginBottom:
-                "20px",
-            }}
-          />
-
-          <h2
-            style={{
-              fontSize:
-                "30px",
-              margin:
-                "10px 0",
-            }}
-          >
-            No Orders Yet
-          </h2>
-
-          <p
-            style={{
-              color:
-                "#999",
-              fontSize:
-                "17px",
-              lineHeight:
-                "1.6",
-            }}
-          >
-            Your placed orders
-            will appear here.
-          </p>
-
-          <button
-            onClick={() =>
-              navigate(
-                "/home"
-              )
-            }
-            style={{
-              marginTop:
-                "20px",
-              padding:
-                "14px 28px",
-              background:
-                "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
-              color:
-                "#111",
-              border:
-                "none",
-              borderRadius:
-                "12px",
-              fontWeight:
-                "bold",
-              cursor:
-                "pointer",
-            }}
-          >
-            START ORDERING
-          </button>
-        </div>
       </div>
+
     );
+
   }
+
 
   // ==========================================
   // MAIN UI
   // ==========================================
 
   return (
-    <div
-      style={{
-        minHeight:
-          "100vh",
-        background:
-          "linear-gradient(180deg,#050505,#111)",
-        color: "white",
-        padding:
-          "30px",
-        fontFamily:
-          "Arial, sans-serif",
-      }}
-    >
+
+    <div className="my-orders-page">
+
+      <div className="orders-background-glow glow-one" />
+      <div className="orders-background-glow glow-two" />
+
 
       {/* ======================================
           HEADER
       ====================================== */}
 
-      <div
-        style={{
-          display:
-            "flex",
-          justifyContent:
-            "space-between",
-          alignItems:
-            "center",
-          marginBottom:
-            "35px",
-          gap:
-            "20px",
-          flexWrap:
-            "wrap",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              color:
-                "#d89a2b",
-              fontSize:
-                "42px",
-              margin:
-                "0 0 8px",
-              letterSpacing:
-                "2px",
-            }}
-          >
-            MY ORDERS
-          </h1>
+      <header className="orders-header">
 
-          <p
-            style={{
-              margin: 0,
-              color:
-                "#888",
-              fontSize:
-                "16px",
-            }}
-          >
-            View your orders
-            and track them
-            in real time
-          </p>
+        <div className="orders-title-section">
+
+          <div className="orders-title-icon">
+
+            <FaReceipt />
+
+          </div>
+
+
+          <div>
+
+            <div className="orders-eyebrow">
+
+              CUSTOMER PORTAL
+
+            </div>
+
+
+            <h1>
+              MY ORDERS
+            </h1>
+
+
+            <p>
+              View your orders and track
+              them in real time
+            </p>
+
+          </div>
+
         </div>
 
-        <div
-          style={{
-            display:
-              "flex",
-            gap:
-              "12px",
-          }}
-        >
 
-          {/* REFRESH */}
+        <div className="orders-header-actions">
 
           <button
-            onClick={
-              loadOrders
-            }
-            style={{
-              padding:
-                "13px 20px",
-              background:
-                "#222",
-              color:
-                "#d89a2b",
-              border:
-                "1px solid #d89a2b",
-              borderRadius:
-                "12px",
-              cursor:
-                "pointer",
-              fontWeight:
-                "bold",
-              display:
-                "flex",
-              alignItems:
-                "center",
-              gap:
-                "8px",
-            }}
+            className="refresh-button"
+            onClick={loadOrders}
           >
+
             <FaSyncAlt />
-            Refresh
+
+            <span>
+              REFRESH
+            </span>
+
           </button>
 
-          {/* HOME */}
 
           <button
+            className="home-button"
             onClick={() =>
-              navigate(
-                "/home"
-              )
+              navigate("/home")
             }
-            style={{
-              padding:
-                "13px 22px",
-              background:
-                "#d89a2b",
-              color:
-                "#111",
-              border:
-                "none",
-              borderRadius:
-                "12px",
-              cursor:
-                "pointer",
-              fontWeight:
-                "bold",
-              display:
-                "flex",
-              alignItems:
-                "center",
-              gap:
-                "8px",
-            }}
           >
+
             <FaHome />
-            Home
+
+            <span>
+              HOME
+            </span>
+
           </button>
 
         </div>
-      </div>
+
+      </header>
+
 
       {/* ======================================
-          ORDER COUNT
+          SUMMARY BAR
       ====================================== */}
 
-      <div
-        style={{
-          marginBottom:
-            "25px",
-          color:
-            "#aaa",
-        }}
-      >
-        <FaReceipt
-          style={{
-            color:
-              "#d89a2b",
-            marginRight:
-              "8px",
-          }}
-        />
+      <div className="orders-summary-bar">
 
-        {orders.length} order
-        {orders.length !== 1
-          ? "s"
-          : ""}
+        <div className="summary-left">
+
+          <div className="summary-icon">
+
+            <FaShoppingBag />
+
+          </div>
+
+
+          <div>
+
+            <span className="summary-number">
+
+              {orders.length}
+
+            </span>
+
+
+            <span className="summary-text">
+
+              {orders.length === 1
+                ? " Order"
+                : " Orders"}
+
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div className="summary-divider" />
+
+
+        <div className="summary-message">
+
+          <FaClock />
+
+          <span>
+            Your latest order is shown below
+          </span>
+
+        </div>
+
       </div>
+
 
       {/* ======================================
           LOADING
       ====================================== */}
 
       {loading && (
-        <div
-          style={{
-            textAlign:
-              "center",
-            padding:
-              "80px",
-            color:
-              "#aaa",
-          }}
-        >
-          <FaSyncAlt
-            style={{
-              fontSize:
-                "35px",
-              color:
-                "#d89a2b",
-              marginBottom:
-                "15px",
-            }}
-          />
+
+        <div className="orders-loading">
+
+          <div className="loading-spinner">
+
+            <FaSyncAlt />
+
+          </div>
+
+
+          <h3>
+            Loading your orders
+          </h3>
+
 
           <p>
-            Loading your
-            orders...
+            Fetching the latest order status...
           </p>
+
         </div>
+
       )}
+
 
       {/* ======================================
           ORDERS
       ====================================== */}
 
-{!loading &&
-  orders.map(
-    (order, index) => (
-            <div
-              key={
-                order._id ||
-                order.id ||
-                index
-              }
-              style={{
-                maxWidth:
-                  "1100px",
-                margin:
-                  "0 auto 25px",
-                background:
-                  "linear-gradient(145deg,#171717,#101010)",
-                border:
-                  "1px solid rgba(216,154,43,.22)",
-                borderRadius:
-                  "22px",
-                padding:
-                  "28px",
-                boxShadow:
-                  "0 15px 45px rgba(0,0,0,.3)",
-              }}
-            >
+      {!loading && (
 
-              {/* ORDER HEADER */}
+        <div className="orders-list">
 
-              <div
-                style={{
-                  display:
-                    "flex",
-                  justifyContent:
-                    "space-between",
-                  alignItems:
-                    "center",
-                  gap:
-                    "15px",
-                  flexWrap:
-                    "wrap",
-                  borderBottom:
-                    "1px solid #292929",
-                  paddingBottom:
-                    "20px",
-                  marginBottom:
-                    "20px",
-                }}
-              >
+          {orders.map(
+            (
+              order,
+              index
+            ) => {
 
-                <div>
-                  <h2
-                    style={{
-                      margin:
-                        "0 0 8px",
-                      color:
-                        "#fff",
-                    }}
-                  >
-                    Order #
-                    {String(
-                      order._id ||
-                      order.id ||
-                      ""
-                    ).slice(
-                      -8
-                    )}
-                  </h2>
+              const itemCount =
+                getItemCount(order);
 
-                  <p
-                    style={{
-                      margin: 0,
-                      color:
-                        "#777",
-                    }}
-                  >
-                    <FaClock
-                      style={{
-                        marginRight:
-                          "7px",
-                      }}
-                    />
 
-                    {formatDate(
-                      order.createdAt ||
-                      order.time
-                    )}
-                  </p>
-                </div>
+              return (
 
-                {/* STATUS */}
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap:
-                      "8px",
-                    padding:
-                      "10px 16px",
-                    borderRadius:
-                      "25px",
-                    background:
-                      `${getStatusColor(
-                        order.status
-                      )}20`,
-                    color:
-                      getStatusColor(
-                        order.status
-                      ),
-                    fontWeight:
-                      "bold",
-                  }}
+                <article
+                  key={
+                    order._id ||
+                    order.id ||
+                    index
+                  }
+                  className="order-card"
                 >
-                  {order.status ===
-                    "SERVED" ? (
-                    <FaCheckCircle />
-                  ) : (
-                    <FaUtensils />
-                  )}
 
-                  {getStatusText(
-                    order.status
-                  )}
-                </div>
+                  {/* TOP GOLD LINE */}
 
-              </div>
+                  <div className="order-card-line" />
 
-              {/* ORDER CONTENT */}
 
-              <div
-                style={{
-                  display:
-                    "grid",
-                  gridTemplateColumns:
-                    "1fr 220px",
-                  gap:
-                    "25px",
-                }}
-              >
+                  {/* ==================================
+                      ORDER HEADER
+                  ================================== */}
 
-                {/* ITEMS */}
+                  <div className="order-card-header">
 
-                <div>
-                  <h3
-                    style={{
-                      color:
-                        "#d89a2b",
-                      marginTop: 0,
-                    }}
-                  >
-                    ORDER ITEMS
-                  </h3>
+                    <div className="order-info">
 
-                  {(order.items ||
-                    []).map(
-                      (
-                        item,
-                        itemIndex
-                      ) => {
-                        const quantity =
-                          Number(
-                            item.quantity ??
-                            item.qty ??
-                            1
-                          );
+                      <div className="order-number-label">
 
-                        const price =
-                          Number(
-                            item.price ||
-                            0
-                          );
+                        ORDER
 
-                        return (
-                          <div
-                            key={
-                              item._id ||
-                              item.id ||
-                              itemIndex
-                            }
-                            style={{
-                              display:
-                                "flex",
-                              justifyContent:
-                                "space-between",
-                              alignItems:
-                                "center",
-                              padding:
-                                "12px 0",
-                              borderBottom:
-                                "1px solid #242424",
-                            }}
-                          >
+                      </div>
 
-                            <div>
-                              <strong>
-                                {
-                                  item.name
+
+                      <h2>
+
+                        #
+
+                        {String(
+                          order._id ||
+                          order.id ||
+                          ""
+                        ).slice(-8)}
+
+                      </h2>
+
+
+                      <div className="order-date">
+
+                        <FaClock />
+
+                        {formatDate(
+                          order.createdAt ||
+                          order.time
+                        )}
+
+                      </div>
+
+                    </div>
+
+
+                    {/* STATUS */}
+
+                    <div
+                      className={`order-status ${getStatusClass(
+                        order.status
+                      )}`}
+                    >
+
+                      {order.status ===
+                      "SERVED" ? (
+                        <FaCheckCircle />
+                      ) : (
+                        <FaUtensils />
+                      )}
+
+
+                      <span>
+                        {getStatusText(
+                          order.status
+                        )}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+
+                  {/* ==================================
+                      ORDER BODY
+                  ================================== */}
+
+                  <div className="order-card-body">
+
+
+                    {/* ITEMS */}
+
+                    <div className="order-items-section">
+
+                      <div className="section-heading">
+
+                        <FaUtensils />
+
+                        <span>
+                          ORDER ITEMS
+                        </span>
+
+                        <div className="heading-line" />
+
+                      </div>
+
+
+                      <div className="items-container">
+
+                        {(order.items || []).map(
+                          (
+                            item,
+                            itemIndex
+                          ) => {
+
+                            const quantity =
+                              Number(
+                                item.quantity ??
+                                item.qty ??
+                                1
+                              );
+
+
+                            const price =
+                              Number(
+                                item.price ||
+                                0
+                              );
+
+
+                            return (
+
+                              <div
+                                key={
+                                  item._id ||
+                                  item.id ||
+                                  itemIndex
                                 }
-                              </strong>
-
-                              <span
-                                style={{
-                                  color:
-                                    "#777",
-                                  marginLeft:
-                                    "10px",
-                                }}
+                                className="order-item"
                               >
-                                ×{" "}
-                                {
-                                  quantity
-                                }
-                              </span>
-                            </div>
 
-                            <strong
-                              style={{
-                                color:
-                                  "#ddd",
-                              }}
-                            >
-                              ₹
-                              {price *
-                                quantity}
-                            </strong>
+                                <div className="item-left">
 
-                          </div>
-                        );
-                      }
-                    )}
-                </div>
+                                  <div className="item-number">
 
-                {/* SUMMARY */}
+                                    {String(
+                                      itemIndex + 1
+                                    ).padStart(
+                                      2,
+                                      "0"
+                                    )}
 
-                <div
-                  style={{
-                    background:
-                      "#0d0d0d",
-                    borderRadius:
-                      "16px",
-                    padding:
-                      "20px",
-                    border:
-                      "1px solid #292929",
-                    height:
-                      "fit-content",
-                  }}
-                >
+                                  </div>
 
-                  <p
-                    style={{
-                      color:
-                        "#888",
-                      marginTop:
-                        0,
-                    }}
-                  >
-                    TOTAL
-                  </p>
 
-                  <h2
-                    style={{
-                      color:
-                        "#d89a2b",
-                      fontSize:
-                        "30px",
-                      margin:
-                        "5px 0 20px",
-                    }}
-                  >
-                    ₹
-                    {getTotal(
-                      order
-                    )}
-                  </h2>
+                                  <div className="item-details">
 
-                  <button
-                    onClick={() =>
-                      trackOrder(
-                        order
-                      )
-                    }
-                    style={{
-                      width:
-                        "100%",
-                      padding:
-                        "14px",
-                      background:
-                        "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
-                      color:
-                        "#111",
-                      border:
-                        "none",
-                      borderRadius:
-                        "11px",
-                      cursor:
-                        "pointer",
-                      fontWeight:
-                        "bold",
-                      display:
-                        "flex",
-                      justifyContent:
-                        "center",
-                      alignItems:
-                        "center",
-                      gap:
-                        "8px",
-                    }}
-                  >
-                    TRACK MY ORDER
-                    <FaArrowRight />
-                  </button>
+                                    <strong>
+                                      {item.name}
+                                    </strong>
 
-                </div>
 
-              </div>
+                                    <span>
+                                      Quantity × {quantity}
+                                    </span>
 
-            </div>
-          )
-        )}
+                                  </div>
+
+                                </div>
+
+
+                                <div className="item-price">
+
+                                  ₹
+
+                                  {(
+                                    price *
+                                    quantity
+                                  ).toLocaleString(
+                                    "en-IN"
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                            );
+
+                          }
+                        )}
+
+                      </div>
+
+
+                      {/* ITEM COUNT */}
+
+                      <div className="items-count">
+
+                        <FaShoppingBag />
+
+                        {itemCount}
+
+                        {itemCount === 1
+                          ? " item"
+                          : " items"}
+
+                      </div>
+
+                    </div>
+
+
+                    {/* ==================================
+                        SUMMARY
+                    ================================== */}
+
+                    <div className="order-summary">
+
+                      <div className="summary-label">
+
+                        ORDER TOTAL
+
+                      </div>
+
+
+                      <div className="total-amount">
+
+                        <span>
+                          ₹
+                        </span>
+
+                        {Number(
+                          getTotal(order)
+                        ).toLocaleString(
+                          "en-IN"
+                        )}
+
+                      </div>
+
+
+                      <div className="total-divider" />
+
+
+                      <div className="tracking-label">
+
+                        <FaClock />
+
+                        LIVE ORDER TRACKING
+
+                      </div>
+
+
+                      <button
+                        className="track-order-button"
+                        onClick={() =>
+                          trackOrder(order)
+                        }
+                      >
+
+                        <span>
+                          TRACK MY ORDER
+                        </span>
+
+                        <FaArrowRight />
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </article>
+
+              );
+
+            }
+          )}
+
+        </div>
+
+      )}
 
     </div>
+
   );
+
 }

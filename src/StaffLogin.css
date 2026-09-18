@@ -1,112 +1,796 @@
+/* =========================================================
+   STAFF LOGIN
+   PREMIUM BLACK + AMBER THEME
+   ========================================================= */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+
 .staff-page {
-
   min-height: 100vh;
+  width: 100%;
 
-  background:
-    radial-gradient(circle at center,
-      rgba(216, 154, 43, .15),
-      transparent 35%),
-    #050505;
+  position: relative;
+
+  overflow: hidden;
 
   display: flex;
-  justify-content: center;
+
   align-items: center;
+  justify-content: center;
+
+  padding: 40px 20px;
+
+  color: #ffffff;
+
+  font-family:
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(216, 154, 43, 0.13),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 10% 90%,
+      rgba(216, 154, 43, 0.06),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(216, 154, 43, 0.05),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      #020202 0%,
+      #070707 45%,
+      #101010 100%
+    );
 }
 
-.staff-card {
 
-  width: 450px;
+/* =========================================================
+   BACKGROUND GLOWS
+   ========================================================= */
 
-  background: #111;
+.staff-glow {
+  position: absolute;
 
-  border:
-    1px solid rgba(216, 154, 43, .25);
+  width: 420px;
+  height: 420px;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  filter: blur(110px);
+
+  opacity: 0.12;
+}
+
+
+.staff-glow-one {
+  top: -220px;
+  left: -180px;
+
+  background: #d89a2b;
+}
+
+
+.staff-glow-two {
+  right: -200px;
+  bottom: -220px;
+
+  background: #a96d16;
+}
+
+
+/* =========================================================
+   BACKGROUND GRID
+   ========================================================= */
+
+.staff-grid {
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  opacity: 0.15;
+
+  background-image:
+    linear-gradient(
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px
+    );
+
+  background-size:
+    45px 45px;
+
+  mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 75%
+    );
+}
+
+
+/* =========================================================
+   HOME BUTTON
+   ========================================================= */
+
+.staff-home-button {
+  position: absolute;
+
+  top: 28px;
+  left: 30px;
+
+  z-index: 10;
+
+  min-height: 50px;
+
+  padding: 0 21px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 1px solid
+    rgba(216, 154, 43, 0.35);
+
+  border-radius: 13px;
+
+  cursor: pointer;
+
+  color: #111111;
+
+  background:
+    linear-gradient(
+      135deg,
+      #b87918,
+      #d89a2b,
+      #f4c45f
+    );
+
+  font-size: 13px;
+
+  font-weight: 900;
+
+  letter-spacing: 0.7px;
+
+  box-shadow:
+    0 8px 28px
+    rgba(216, 154, 43, 0.18);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+
+.staff-home-button:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 13px 36px
+    rgba(216, 154, 43, 0.30);
+}
+
+
+.staff-home-button svg {
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   LOGIN CARD
+   ========================================================= */
+
+.staff-login-card {
+  position: relative;
+
+  z-index: 5;
+
+  width: min(470px, 94vw);
+
+  padding: 42px 43px 32px;
 
   border-radius: 25px;
 
-  padding: 40px;
-
   text-align: center;
 
+  background:
+    linear-gradient(
+      145deg,
+      rgba(25, 25, 25, 0.98),
+      rgba(10, 10, 10, 0.98)
+    );
+
+  border:
+    1px solid
+    rgba(216, 154, 43, 0.22);
+
   box-shadow:
-    0 0 30px rgba(216, 154, 43, .15);
+    0 35px 100px
+    rgba(0, 0, 0, 0.65),
+    0 0 55px
+    rgba(216, 154, 43, 0.06);
+
+  backdrop-filter:
+    blur(14px);
 }
 
-.staff-logo {
 
-  width: 150px;
-  margin-bottom: 20px;
+/* =========================================================
+   GOLD TOP LINE
+   ========================================================= */
+
+.staff-card-line {
+  position: absolute;
+
+  top: 0;
+  left: 15%;
+
+  width: 70%;
+
+  height: 3px;
+
+  border-radius: 0 0 8px 8px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #b87918,
+      #f4c45f,
+      #b87918,
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(216, 154, 43, 0.35);
 }
 
-.staff-card h1 {
+
+/* =========================================================
+   LOGIN ICON
+   ========================================================= */
+
+.staff-login-icon {
+  width: 76px;
+  height: 76px;
+
+  margin: 0 auto 20px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 21px;
 
   color: #d89a2b;
 
-  margin-bottom: 10px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(216, 154, 43, 0.15),
+      rgba(216, 154, 43, 0.04)
+    );
+
+  border:
+    1px solid
+    rgba(216, 154, 43, 0.27);
+
+  box-shadow:
+    0 0 35px
+    rgba(216, 154, 43, 0.08);
+
+  font-size: 31px;
 }
 
-.staff-card p {
 
-  color: #ccc;
+/* =========================================================
+   TITLE
+   ========================================================= */
 
-  margin-bottom: 25px;
+.staff-eyebrow {
+  margin-bottom: 8px;
+
+  color: #a77a2b;
+
+  font-size: 9px;
+
+  font-weight: 900;
+
+  letter-spacing: 3px;
 }
 
-.staff-card input {
+
+.staff-login-card h1 {
+  margin: 0;
+
+  color: #ffffff;
+
+  font-size: 32px;
+
+  line-height: 1.1;
+
+  font-weight: 950;
+
+  letter-spacing: 1.5px;
+}
+
+
+.staff-subtitle {
+  margin:
+    10px 0 30px;
+
+  color: #707070;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   FORM FIELD
+   ========================================================= */
+
+.staff-field {
+  width: 100%;
+
+  margin-bottom: 18px;
+
+  text-align: left;
+}
+
+
+.staff-field label {
+  display: block;
+
+  margin:
+    0 0 8px 3px;
+
+  color: #888888;
+
+  font-size: 9px;
+
+  font-weight: 900;
+
+  letter-spacing: 1.7px;
+}
+
+
+/* =========================================================
+   INPUT WRAPPER
+   ========================================================= */
+
+.staff-input-wrapper {
+  position: relative;
 
   width: 100%;
 
-  height: 60px;
+  height: 55px;
+
+  display: flex;
+
+  align-items: center;
+
+  border:
+    1px solid #292929;
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #171717,
+      #101010
+    );
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+
+.staff-input-wrapper:focus-within {
+  border-color:
+    rgba(216, 154, 43, 0.55);
+
+  background:
+    linear-gradient(
+      145deg,
+      #1b1b1b,
+      #111111
+    );
+
+  box-shadow:
+    0 0 0 3px
+    rgba(216, 154, 43, 0.06),
+    0 0 22px
+    rgba(216, 154, 43, 0.06);
+}
+
+
+/* =========================================================
+   FIELD ICON
+   ========================================================= */
+
+.field-icon {
+  position: absolute;
+
+  left: 17px;
+
+  z-index: 2;
+
+  color: #6b6b6b;
+
+  font-size: 14px;
+
+  pointer-events: none;
+
+  transition:
+    color 0.2s ease;
+}
+
+
+.staff-input-wrapper:focus-within
+.field-icon {
+  color: #d89a2b;
+}
+
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
+.staff-input-wrapper input,
+.staff-input-wrapper select {
+  width: 100%;
+  height: 100%;
 
   border: none;
 
   outline: none;
 
-  border-radius: 15px;
+  padding:
+    0 17px 0 46px;
 
-  padding: 0 20px;
+  border-radius: 13px;
 
-  background: #1b1b1b;
+  color: #eeeeee;
 
-  color: white;
+  background: transparent;
 
-  font-size: 22px;
+  font-family: inherit;
 
-  text-align: center;
+  font-size: 14px;
 
-  margin-bottom: 20px;
+  font-weight: 600;
 }
 
-.staff-card button {
 
+.staff-input-wrapper input::placeholder {
+  color: #555555;
+}
+
+
+.staff-input-wrapper input:disabled,
+.staff-input-wrapper select:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+.staff-input-wrapper select {
+  appearance: none;
+
+  -webkit-appearance: none;
+
+  cursor: pointer;
+
+  padding-right: 45px;
+}
+
+
+.staff-input-wrapper select option {
+  color: #ffffff;
+
+  background: #151515;
+}
+
+
+.select-arrow {
+  position: absolute;
+
+  right: 17px;
+
+  color: #777777;
+
+  font-size: 10px;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+   ========================================================= */
+
+.staff-login-button {
   width: 100%;
 
-  height: 60px;
+  min-height: 55px;
 
-  margin-top: 15px;
+  margin-top: 8px;
 
   border: none;
 
-  border-radius: 15px;
+  border-radius: 13px;
 
-  background: #d89a2b;
+  display: flex;
 
-  color: #111;
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  cursor: pointer;
+
+  color: #111111;
+
+  background:
+    linear-gradient(
+      135deg,
+      #b87918,
+      #d89a2b,
+      #f4c45f
+    );
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  font-weight: 950;
+
+  letter-spacing: 0.8px;
+
+  box-shadow:
+    0 10px 30px
+    rgba(216, 154, 43, 0.17);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+
+.staff-login-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 15px 38px
+    rgba(216, 154, 43, 0.30);
+
+  filter: brightness(1.05);
+}
+
+
+.staff-login-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+
+.staff-login-button:disabled {
+  cursor: not-allowed;
+
+  opacity: 0.65;
+}
+
+
+/* =========================================================
+   LOGIN SPINNER
+   ========================================================= */
+
+.login-spinner {
+  width: 15px;
+  height: 15px;
+
+  border:
+    2px solid
+    rgba(17, 17, 17, 0.30);
+
+  border-top-color: #111111;
+
+  border-radius: 50%;
+
+  animation:
+    login-spin 0.8s linear infinite;
+}
+
+
+@keyframes login-spin {
+
+  to {
+    transform: rotate(360deg);
+  }
+
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.staff-login-footer {
+  margin-top: 24px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  color: #505050;
+
+  font-size: 9px;
 
   font-weight: 700;
 
-  cursor: pointer;
+  letter-spacing: 0.8px;
 }
 
-.staff-error {
 
-  color: #ff5e5e;
+.footer-dot {
+  width: 4px;
+  height: 4px;
 
-  margin-top: 10px;
+  border-radius: 50%;
+
+  background: #8b641f;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .staff-page {
+    padding:
+      90px 16px 30px;
+
+    align-items: flex-start;
+  }
+
+
+  .staff-home-button {
+    top: 18px;
+    left: 18px;
+
+    min-height: 45px;
+
+    padding: 0 16px;
+
+    font-size: 11px;
+  }
+
+
+  .staff-login-card {
+    width: 100%;
+
+    padding:
+      35px 24px 27px;
+
+    border-radius: 21px;
+  }
+
+
+  .staff-login-icon {
+    width: 66px;
+    height: 66px;
+
+    font-size: 27px;
+  }
+
+
+  .staff-login-card h1 {
+    font-size: 27px;
+  }
+
+
+  .staff-subtitle {
+    margin-bottom: 25px;
+
+    font-size: 12px;
+  }
+
+
+  .staff-input-wrapper {
+    height: 53px;
+  }
+
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+  .staff-login-card {
+    padding:
+      30px 19px 25px;
+  }
+
+
+  .staff-login-card h1 {
+    font-size: 24px;
+  }
+
+
+  .staff-eyebrow {
+    font-size: 8px;
+
+    letter-spacing: 2px;
+  }
+
+
+  .staff-login-footer {
+    font-size: 8px;
+  }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .staff-home-button,
+  .staff-login-button,
+  .staff-input-wrapper {
+    transition: none;
+  }
+
+
+  .login-spinner {
+    animation: none;
+  }
+
 }

@@ -1,7 +1,10 @@
 import express from "express";
 import AssistanceRequest from "../models/AssistanceRequest.js";
 import Staff from "../models/Staff.js";
-import { addCredits } from "../utils/credits.js";
+import {
+  addCredits,
+  awardWaiterCompletionBonus,
+} from "../utils/credits.js";
 
 const router = express.Router();
 
@@ -10,25 +13,108 @@ const secondsBetween = (from, to = new Date()) => Math.max(
   Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 1000)
 );
 
-const assistanceTimerPoints = (request, finishedAt) => {
-  const elapsedSeconds = secondsBetween(request.acceptedAt, finishedAt);
-  const targetSeconds = request.type === "CASH_PAYMENT" ? 10 * 60 : 8 * 60;
+const assistanceTimerPoints = (
+  request,
+  finishedAt
+) => {
+  const elapsedSeconds =
+    secondsBetween(
+      request.acceptedAt,
+      finishedAt
+    );
 
-  if (elapsedSeconds <= targetSeconds) {
+  const targetSeconds =
+    8 * 60;
+
+  /* =========================================
+     BEFORE RED
+  ========================================= */
+
+  if (
+    elapsedSeconds < targetSeconds
+  ) {
+    const remainingSeconds =
+      targetSeconds -
+      elapsedSeconds;
+
     return {
-      points: targetSeconds - elapsedSeconds,
+      points:
+        0.5 * remainingSeconds,
+
       elapsedSeconds,
-      reason: "WAITER_ASSISTANCE_ON_TIME",
+
+      reason:
+        "WAITER_ASSISTANCE_EARLY",
     };
   }
 
+  /* =========================================
+     EXACTLY AT RED
+  ========================================= */
+
+  if (
+    elapsedSeconds === targetSeconds
+  ) {
+    return {
+      points: 0,
+      elapsedSeconds,
+      reason:
+        "WAITER_ASSISTANCE_RED",
+    };
+  }
+
+  /* =========================================
+     AFTER RED
+  ========================================= */
+
+  const lateSeconds =
+    elapsedSeconds -
+    targetSeconds;
+
   return {
-    points: -2 * (elapsedSeconds - targetSeconds),
+    points:
+      -2 * lateSeconds,
+
     elapsedSeconds,
-    reason: "WAITER_ASSISTANCE_LATE",
+
+    reason:
+      "WAITER_ASSISTANCE_LATE",
   };
 };
 
+if (
+  timerPoints.points !== 0
+) {
+  await addCredits({
+    staffId,
+    staffName:
+      request.acceptedByName,
+    role: "WAITER",
+    points:
+      timerPoints.points,
+    reason:
+      timerPoints.reason,
+    assistanceId:
+      request._id,
+    elapsedSeconds:
+      timerPoints.elapsedSeconds,
+  });
+}
+
+/*
+   First 100 individual waiter tasks:
+   Assistance = +50
+*/
+
+await awardWaiterCompletionBonus({
+  staffId,
+  staffName:
+    request.acceptedByName,
+  assistanceId:
+    request._id,
+  taskType:
+    "ASSISTANCE",
+});
 
 /*
 ==================================================

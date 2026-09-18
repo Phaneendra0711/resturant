@@ -495,17 +495,302 @@ body {
 
 }
 
-.credit-points-box { position: relative; overflow: visible; }
-.credit-points-pulse { animation: credit-points-pulse .65s ease-out; }
-.credit-score { display: flex; align-items: center; gap: 10px; }
-.credit-star { color: #ffcc4d; font-weight: 900; font-size: 28px; line-height: 1; }
-.credit-number { display: inline-block; font-size: 34px; font-weight: 900; line-height: 1; letter-spacing: 0.04em; min-width: 3ch; animation: credit-number-roll .45s ease-out; text-shadow: 0 0 12px rgba(255,255,255,0.14); }
-.credit-neutral { color: #ffffff; }
-.credit-positive { color: #4ade80; }
-.credit-negative { color: #ff5f5f; }
-.credit-change { position: absolute; top: -18px; right: -8px; font-size: 15px; font-weight: 800; animation: credit-change-float 1.8s ease-out forwards; pointer-events: none; }
-.credit-change-positive { color: #43df7b; }
-.credit-change-negative { color: #ff5f5f; }
-@keyframes credit-points-pulse { 50% { transform: scale(1.12); filter: drop-shadow(0 0 9px #ffcc4d); } }
-@keyframes credit-change-float { from { opacity: 0; transform: translateY(8px) scale(.8); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(-30px) scale(1.08); } }
-@keyframes credit-number-roll { 0% { opacity: 0; transform: translateY(16px) scale(0.78); filter: blur(2px); } 25% { opacity: 1; } 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+/* =========================================================
+   CREDIT POINTS — PREMIUM LIVE EFFECT
+   ========================================================= */
+
+.credit-points-box {
+  position: relative;
+  overflow: visible !important;
+  min-width: 145px;
+}
+
+.credit-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+/* Main credit symbol */
+.credit-star {
+  color: #ffcc4d;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+  display: inline-block;
+  text-shadow:
+    0 0 5px rgba(255, 204, 77, 0.8),
+    0 0 15px rgba(255, 204, 77, 0.45);
+  animation: credit-symbol-glow 2s ease-in-out infinite;
+}
+
+/* Main number */
+.credit-number {
+  display: inline-block;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  min-width: 3ch;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
+}
+
+/* Normal */
+.credit-neutral {
+  color: #ffffff;
+}
+
+/* Earned */
+.credit-positive {
+  color: #4ade80;
+  text-shadow:
+    0 0 8px rgba(74, 222, 128, 0.65),
+    0 0 18px rgba(74, 222, 128, 0.35);
+}
+
+/* Deducted */
+.credit-negative {
+  color: #ff5f5f;
+  text-shadow:
+    0 0 8px rgba(255, 95, 95, 0.7),
+    0 0 18px rgba(255, 95, 95, 0.4);
+}
+
+/* =========================================================
+   + / - CHANGE POPUP
+   ========================================================= */
+
+.credit-change {
+  position: absolute;
+  top: -18px;
+  right: -15px;
+
+  font-size: 16px;
+  font-weight: 900;
+  white-space: nowrap;
+
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Earn */
+.credit-change-positive {
+  color: #4ade80;
+
+  text-shadow:
+    0 0 6px rgba(74, 222, 128, 0.9),
+    0 0 14px rgba(74, 222, 128, 0.6);
+
+  animation:
+    credit-earned 1.8s cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+/* Deduct */
+.credit-change-negative {
+  color: #ff5f5f;
+
+  text-shadow:
+    0 0 6px rgba(255, 95, 95, 0.9),
+    0 0 14px rgba(255, 95, 95, 0.6);
+
+  animation:
+    credit-deducted 1.8s cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+/* =========================================================
+   MAIN BALANCE ANIMATION
+   ========================================================= */
+
+.credit-points-pulse {
+  animation: credit-box-pulse 0.75s ease-out;
+}
+
+.credit-points-pulse .credit-number {
+  animation: credit-number-pop 0.65s cubic-bezier(.17,.67,.35,1.4);
+}
+
+.credit-points-pulse .credit-star {
+  animation:
+    credit-symbol-burst 0.7s ease-out,
+    credit-symbol-glow 2s ease-in-out 0.7s infinite;
+}
+
+/* =========================================================
+   EARNED ANIMATION
+   ========================================================= */
+
+@keyframes credit-earned {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.65);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.15);
+  }
+
+  35% {
+    transform: translateY(-3px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-38px) scale(1.05);
+  }
+}
+
+/* =========================================================
+   DEDUCTED ANIMATION
+   ========================================================= */
+
+@keyframes credit-deducted {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.65);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.15);
+  }
+
+  35% {
+    transform: translateY(2px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(28px) scale(1.05);
+  }
+}
+
+/* =========================================================
+   BALANCE POP
+   ========================================================= */
+
+@keyframes credit-number-pop {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.65);
+    filter: blur(3px);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1.3);
+    filter: blur(0);
+  }
+
+  60% {
+    transform: scale(0.92);
+  }
+
+  80% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   BOX PULSE
+   ========================================================= */
+
+@keyframes credit-box-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.08);
+  }
+
+  65% {
+    transform: scale(0.98);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   SYMBOL EFFECT
+   ========================================================= */
+
+@keyframes credit-symbol-burst {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.5) rotate(-10deg);
+    filter:
+      drop-shadow(0 0 8px #ffcc4d)
+      drop-shadow(0 0 18px #ffcc4d);
+  }
+
+  65% {
+    transform: scale(0.9) rotate(8deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes credit-symbol-glow {
+  0%,
+  100% {
+    filter:
+      drop-shadow(0 0 2px rgba(255, 204, 77, 0.6));
+  }
+
+  50% {
+    filter:
+      drop-shadow(0 0 7px rgba(255, 204, 77, 1))
+      drop-shadow(0 0 14px rgba(255, 204, 77, 0.55));
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .credit-points-box {
+    min-width: 120px;
+  }
+
+  .credit-star {
+    font-size: 24px;
+  }
+
+  .credit-number {
+    font-size: 27px;
+  }
+
+  .credit-change {
+    font-size: 14px;
+    right: -10px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-points-pulse,
+  .credit-points-pulse .credit-number,
+  .credit-points-pulse .credit-star,
+  .credit-change-positive,
+  .credit-change-negative,
+  .credit-star {
+    animation: none !important;
+  }
+}

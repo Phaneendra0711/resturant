@@ -4,7 +4,10 @@ import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import AssistanceRequest from "../models/AssistanceRequest.js";
 import Coupon from "../models/Coupon.js";
-import { addCredits, todayWaiterOrderCount } from "../utils/credits.js";
+import {
+  addCredits,
+  awardWaiterCompletionBonus,
+} from "../utils/credits.js";
 
 const router = express.Router();
 
@@ -14,8 +17,8 @@ const ensureCompensationCoupon = async (order, servedAt) => {
   const isServed = order.status === "SERVED";
   const completionTime = isServed
     ? order.waiter?.servedAt ||
-      order.items.find((item) => item.servedAt)?.servedAt ||
-      servedAt
+    order.items.find((item) => item.servedAt)?.servedAt ||
+    servedAt
     : servedAt;
 
   const estimateMinutes = (
@@ -178,18 +181,78 @@ const chefTimerPoints = (item, finishedAt) => {
   return { points: 0, elapsedSeconds, reason: "CHEF_ORANGE_WINDOW" };
 };
 
-const waiterTimerPoints = (item, finishedAt) => {
-  const elapsedSeconds = secondsBetween(item.waiterAssignedAt, finishedAt);
-  const targetSeconds = (isFood(item) ? 8 : 5) * 60;
-  if (elapsedSeconds <= targetSeconds) {
-    const remainingSeconds = targetSeconds - elapsedSeconds;
-    return { points: remainingSeconds, elapsedSeconds, reason: "WAITER_ON_TIME_SERVICE" };
+const waiterTimerPoints = (
+  item,
+  finishedAt
+) => {
+  const elapsedSeconds =
+    secondsBetween(
+      item.waiterAssignedAt,
+      finishedAt
+    );
+
+  const targetSeconds =
+    (isFood(item) ? 8 : 5) * 60;
+
+  /* =========================================
+     BEFORE RED
+
+     +0.5 point for every second remaining
+  ========================================= */
+
+  if (
+    elapsedSeconds < targetSeconds
+  ) {
+    const remainingSeconds =
+      targetSeconds -
+      elapsedSeconds;
+
+    return {
+      points:
+        0.5 * remainingSeconds,
+
+      elapsedSeconds,
+
+      reason:
+        "WAITER_EARLY_SERVICE",
+    };
   }
 
+  /* =========================================
+     EXACTLY AT RED
+
+     0 points
+  ========================================= */
+
+  if (
+    elapsedSeconds === targetSeconds
+  ) {
+    return {
+      points: 0,
+      elapsedSeconds,
+      reason:
+        "WAITER_RED_SERVICE",
+    };
+  }
+
+  /* =========================================
+     AFTER RED
+
+     -2 points for every second late
+  ========================================= */
+
+  const lateSeconds =
+    elapsedSeconds -
+    targetSeconds;
+
   return {
-    points: -2 * (elapsedSeconds - targetSeconds),
+    points:
+      -2 * lateSeconds,
+
     elapsedSeconds,
-    reason: "WAITER_LATE_SERVICE",
+
+    reason:
+      "WAITER_LATE_SERVICE",
   };
 };
 
@@ -484,9 +547,9 @@ router.post("/", async (req, res) => {
     const chefDeadline =
       foodItems.length > 0
         ? Math.max(
-            20,
-            customerLastMinutes - 10
-          )
+          20,
+          customerLastMinutes - 10
+        )
         : 0;
 
     /*
@@ -500,7 +563,7 @@ router.post("/", async (req, res) => {
     const step =
       foodCount > 1
         ? (chefDeadline - 20) /
-          (foodCount - 1)
+        (foodCount - 1)
         : 0;
 
     /*
@@ -1343,31 +1406,50 @@ router.patch(
 
       const completedOrdersToday = await todayWaiterOrderCount(staffId, now);
       for (const servedItem of groupItems) {
-        const timerPoints = waiterTimerPoints(servedItem, now);
-        if (timerPoints.points !== 0) {
+        const timerCredit =
+          waiterTimerPoints(
+            servedItem,
+            now
+          );
+
+        if (
+          timerCredit.points !== 0
+        ) {
           await addCredits({
             staffId,
             staffName,
             role: "WAITER",
-            points: timerPoints.points,
-            reason: timerPoints.reason,
+            points:
+              timerCredit.points,
+            reason:
+              timerCredit.reason,
             orderId: order._id,
-            itemId: String(servedItem._id),
-            elapsedSeconds: timerPoints.elapsedSeconds,
+            itemId:
+              String(
+                servedItem._id
+              ),
+            elapsedSeconds:
+              timerCredit.elapsedSeconds,
           });
         }
 
-        if (completedOrdersToday >= 101) {
-          await addCredits({
-            staffId,
-            staffName,
-            role: "WAITER",
-            points: isFood(servedItem) ? 100 : 50,
-            reason: isFood(servedItem) ? "WAITER_101ST_FOOD_BONUS" : "WAITER_101ST_SERVICE_BONUS",
-            orderId: order._id,
-            itemId: String(servedItem._id),
-          });
-        }
+        /*
+           Individual daily completion bonus
+        */
+
+        await awardWaiterCompletionBonus({
+          staffId,
+          staffName,
+          orderId: order._id,
+          itemId:
+            String(
+              servedItem._id
+            ),
+          taskType:
+            isFood(servedItem)
+              ? "FOOD"
+              : "SERVICE",
+        });
       }
 
       return res.json({
@@ -1603,9 +1685,9 @@ router.patch(
           foodItems.every(
             (foodItem) =>
               foodItem.status ===
-                "READY" ||
+              "READY" ||
               foodItem.status ===
-                "SERVED"
+              "SERVED"
           );
 
         if (allFoodReady) {
@@ -1661,9 +1743,9 @@ router.patch(
 
         if (
           item.serviceType !==
-            "SERVICE" &&
+          "SERVICE" &&
           item.status !==
-            "READY"
+          "READY"
         ) {
           return res.status(409).json({
             success: false,
@@ -1746,7 +1828,7 @@ router.patch(
           ) {
             const lastFood =
               foodItems[
-                foodItems.length - 1
+              foodItems.length - 1
               ];
 
             if (
@@ -1860,7 +1942,7 @@ router.patch(
         if (
           item.waiterId &&
           String(item.waiterId) !==
-            String(staffId)
+          String(staffId)
         ) {
           return res.status(403).json({
             success: false,

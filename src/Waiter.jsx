@@ -32,8 +32,8 @@ const getItemId = (item) =>
 const getItemQuantity = (item) =>
   Number(
     item?.quantity ??
-      item?.qty ??
-      1
+    item?.qty ??
+    1
   );
 
 const getItemName = (item) =>
@@ -98,7 +98,7 @@ const getServicePreference = (
   const direct =
     String(
       item?.servicePreference ||
-        ""
+      ""
     )
       .trim()
       .toUpperCase();
@@ -218,8 +218,8 @@ function Timer({
   const start =
     startedAt
       ? new Date(
-          startedAt
-        ).getTime()
+        startedAt
+      ).getTime()
       : now;
 
   const elapsed = Math.max(
@@ -534,7 +534,7 @@ export default function Waiter() {
     ) {
       const last =
         foods[
-          foods.length - 1
+        foods.length - 1
         ];
 
       return [
@@ -624,12 +624,12 @@ export default function Waiter() {
         assistanceRequests.filter(
           (request) =>
             request.status ===
-              "ACCEPTED" &&
+            "ACCEPTED" &&
             String(
               request.acceptedById ||
-                ""
+              ""
             ) ===
-              String(staffId)
+            String(staffId)
         ),
       [
         assistanceRequests,
@@ -748,7 +748,7 @@ export default function Waiter() {
               String(
                 getOrderId(order)
               ) ===
-              String(orderId)
+                String(orderId)
                 ? data.order
                 : order
           )
@@ -760,7 +760,7 @@ export default function Waiter() {
 
       alert(
         error.message ||
-          "Unable to accept waiter task"
+        "Unable to accept waiter task"
       );
     }
   };
@@ -809,7 +809,7 @@ export default function Waiter() {
               String(
                 getOrderId(order)
               ) ===
-              String(orderId)
+                String(orderId)
                 ? data.order
                 : order
           )
@@ -819,7 +819,7 @@ export default function Waiter() {
 
       alert(
         error.message ||
-          "Unable to serve waiter task"
+        "Unable to serve waiter task"
       );
     }
   };
@@ -873,7 +873,7 @@ export default function Waiter() {
               String(
                 request._id
               ) ===
-              String(requestId)
+                String(requestId)
                 ? data.request
                 : request
           )
@@ -885,7 +885,7 @@ export default function Waiter() {
 
       alert(
         error.message ||
-          "Unable to accept assistance"
+        "Unable to accept assistance"
       );
     }
   };
@@ -931,7 +931,7 @@ export default function Waiter() {
                 String(
                   request._id
                 ) ===
-                String(requestId)
+                  String(requestId)
                   ? data.request
                   : request
             )
@@ -941,7 +941,7 @@ export default function Waiter() {
 
         alert(
           error.message ||
-            "Unable to complete assistance"
+          "Unable to complete assistance"
         );
       }
     };
@@ -1427,36 +1427,36 @@ export default function Waiter() {
 
             {pendingAssistance.length >
               0 && (
-              <>
-                <h2
-                  className="waiter-section-title"
-                  style={{
-                    marginTop: 25,
-                  }}
-                >
-                  🔔 ASSISTANCE REQUESTS
-                </h2>
+                <>
+                  <h2
+                    className="waiter-section-title"
+                    style={{
+                      marginTop: 25,
+                    }}
+                  >
+                    🔔 ASSISTANCE REQUESTS
+                  </h2>
 
-                {pendingAssistance.map(
-                  renderAssistance
-                )}
-              </>
-            )}
+                  {pendingAssistance.map(
+                    renderAssistance
+                  )}
+                </>
+              )}
 
             {readyCount ===
               0 && (
-              <div className="waiter-empty">
-                <h1>
-                  NO READY TASKS
-                </h1>
+                <div className="waiter-empty">
+                  <h1>
+                    NO READY TASKS
+                  </h1>
 
-                <p>
-                  Waiting for food,
-                  Water/Coke or
-                  assistance.
-                </p>
-              </div>
-            )}
+                  <p>
+                    Waiting for food,
+                    Water/Coke or
+                    assistance.
+                  </p>
+                </div>
+              )}
           </>
         );
       }
@@ -1492,9 +1492,9 @@ export default function Waiter() {
       ) {
         if (
           servedItems.length ===
-            0 &&
+          0 &&
           completedAssistance.length ===
-            0
+          0
         ) {
           return (
             <div className="waiter-empty">
@@ -1508,46 +1508,46 @@ export default function Waiter() {
         return (
           <>
             {servedItems.map(({ order, groupId, items, type }) => (
-                <Card
-                  key={`${getOrderId(order)}-${groupId}`}
+              <Card
+                key={`${getOrderId(order)}-${groupId}`}
+              >
+                <div>
+                  <h3>
+                    {items.map((item, index) => (
+
+                      <span key={getItemId(item)}>
+                        {index > 0 && " + "}
+                        {type === "SERVICE" ? "💧" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
+                      </span>
+                    ))}
+                  </h3>
+
+                  <p>
+                    ORDER: #
+                    {String(
+                      getOrderId(
+                        order
+                      )
+                    ).slice(-6)}
+                  </p>
+
+                  <p>
+                    TABLE:{" "}
+                    {order.tableNumber ||
+                      "N/A"}
+                  </p>
+                </div>
+
+                <strong
+                  style={{
+                    color:
+                      "#22c55e",
+                  }}
                 >
-                  <div>
-                    <h3>
-                      {items.map((item, index) => (
-
-                        <span key={getItemId(item)}>
-                          {index > 0 && " + "}
-                          {type === "SERVICE" ? "💧" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
-                        </span>
-                      ))}
-                    </h3>
-
-                    <p>
-                      ORDER: #
-                      {String(
-                        getOrderId(
-                          order
-                        )
-                      ).slice(-6)}
-                    </p>
-
-                    <p>
-                      TABLE:{" "}
-                      {order.tableNumber ||
-                        "N/A"}
-                    </p>
-                  </div>
-
-                  <strong
-                    style={{
-                      color:
-                        "#22c55e",
-                    }}
-                  >
-                    SERVED
-                  </strong>
-                </Card>
-              )
+                  SERVED
+                </strong>
+              </Card>
+            )
             )}
 
             {completedAssistance.map(
@@ -1710,12 +1710,20 @@ export default function Waiter() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className={`waiter-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
               <div className="credit-score">
-                <span className="credit-star">★</span>
+                <span className="credit-star">✦</span>
                 <span className={`credit-number ${creditChange === null ? "credit-neutral" : creditChange > 0 ? "credit-positive" : "credit-negative"}`}>{creditPoints}</span>
               </div>
               {creditChange !== null && (
-                <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
-                  {creditChange > 0 ? `+${creditChange}` : creditChange}
+                <span
+                  className={
+                    creditChange > 0
+                      ? "credit-change credit-change-positive"
+                      : "credit-change credit-change-negative"
+                  }
+                >
+                  {creditChange > 0
+                    ? `↑ +${creditChange} ✦`
+                    : `↓ ${creditChange} ✦`}
                 </span>
               )}
               <div><p>Credit Points</p></div>

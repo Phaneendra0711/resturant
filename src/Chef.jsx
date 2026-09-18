@@ -486,13 +486,9 @@ export default function Chef() {
           body: JSON.stringify({
             status: "PREPARING",
             staffId:
-              localStorage.getItem(
-                "staffId"
-              ),
+              sessionStorage.getItem("staffId"),
             staffName:
-              localStorage.getItem(
-                "staffName"
-              ),
+              sessionStorage.getItem("staffName"),
             staffRole: "chef",
           }),
         }
@@ -982,7 +978,7 @@ export default function Chef() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className={`chef-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
               <div className="credit-score">
-                <span className="credit-star">★</span>
+                <span className="credit-star">✦</span>
                 <span
                   key={creditPoints}
                   className={`credit-number ${idlePenaltyActive || creditChange < 0 ? "credit-negative" : creditChange > 0 ? "credit-positive" : "credit-neutral"}`}
@@ -991,8 +987,16 @@ export default function Chef() {
                 </span>
               </div>
               {creditChange !== null && (
-                <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
-                  {creditChange > 0 ? `+${creditChange}` : creditChange}
+                <span
+                  className={
+                    creditChange > 0
+                      ? "credit-change credit-change-positive"
+                      : "credit-change credit-change-negative"
+                  }
+                >
+                  {creditChange > 0
+                    ? `↑ +${creditChange} ✦`
+                    : `↓ ${creditChange} ✦`}
                 </span>
               )}
               <div><p>Credit Points</p></div>

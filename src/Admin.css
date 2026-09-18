@@ -1,0 +1,1727 @@
+/* =========================================================
+   ADMIN DASHBOARD
+   FOODCAST / RESTAURANT UI THEME
+========================================================= */
+
+.admin-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 28px 30px 70px;
+
+  color: #ffffff;
+
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      rgba(216, 154, 43, 0.11),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 92% 8%,
+      rgba(216, 154, 43, 0.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(216, 154, 43, 0.045),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #070707 0%,
+      #0b0b0b 42%,
+      #10100f 100%
+    );
+
+  position: relative;
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   PREMIUM BACKGROUND GLOW
+========================================================= */
+
+.admin-page::before {
+  content: "";
+
+  position: fixed;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(216, 154, 43, 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(216, 154, 43, 0.02) 1px,
+      transparent 1px
+    );
+
+  background-size: 70px 70px;
+
+  mask-image:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.7),
+      transparent 80%
+    );
+
+  opacity: 0.35;
+
+  z-index: 0;
+}
+
+.admin-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.admin-header {
+  width: 100%;
+  box-sizing: border-box;
+
+  min-height: 92px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 30px;
+
+  padding: 18px 22px;
+
+  margin-bottom: 24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(25, 25, 25, 0.98),
+      rgba(14, 14, 14, 0.98)
+    );
+
+  border:
+    1px solid rgba(216, 154, 43, 0.18);
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 15px 45px rgba(0, 0, 0, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+
+  backdrop-filter: blur(12px);
+}
+
+.admin-header::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(216, 154, 43, 0.55),
+      transparent
+    );
+
+  opacity: 0.6;
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  min-width: 0;
+}
+
+.admin-brand-icon {
+  width: 54px;
+  height: 54px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 14px;
+
+  color: #111;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e6ad48,
+      #b97818
+    );
+
+  font-size: 23px;
+
+  box-shadow:
+    0 7px 25px rgba(216, 154, 43, 0.22);
+}
+
+.admin-eyebrow {
+  margin: 0 0 4px;
+
+  color: #d89a2b;
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 0.13em;
+}
+
+.admin-brand h1 {
+  margin: 0;
+
+  color: #f3f3f3;
+
+  font-size: 27px;
+  line-height: 1.1;
+
+  font-weight: 850;
+
+  letter-spacing: -0.025em;
+}
+
+.admin-subtitle {
+  margin: 5px 0 0;
+
+  color: #666;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   TOP BUTTONS
+========================================================= */
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  flex-wrap: wrap;
+}
+
+.admin-btn {
+  min-height: 48px;
+
+  padding: 0 19px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border-radius: 11px;
+
+  font-family: inherit;
+
+  font-size: 12px;
+  font-weight: 850;
+
+  cursor: pointer;
+
+  border: 1px solid transparent;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-btn:hover {
+  transform: translateY(-2px);
+}
+
+.admin-btn:active {
+  transform: translateY(0);
+}
+
+.admin-btn span {
+  font-size: 13px;
+}
+
+
+/* PERFORMANCE */
+
+.admin-btn-secondary {
+  color: #ddd;
+
+  background:
+    linear-gradient(
+      145deg,
+      #1c1c1c,
+      #141414
+    );
+
+  border-color:
+    rgba(216, 154, 43, 0.14);
+}
+
+.admin-btn-secondary:hover {
+  color: #fff;
+
+  border-color:
+    rgba(216, 154, 43, 0.4);
+
+  background:
+    linear-gradient(
+      145deg,
+      #242018,
+      #171512
+    );
+
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+
+/* CASH COUPON */
+
+.admin-btn-success {
+  color: #071008;
+
+  background:
+    linear-gradient(
+      145deg,
+      #69d985,
+      #3c9e57
+    );
+
+  border-color:
+    rgba(105, 217, 133, 0.3);
+
+  box-shadow:
+    0 7px 22px rgba(60, 158, 87, 0.15);
+}
+
+.admin-btn-success:hover {
+  box-shadow:
+    0 10px 28px rgba(60, 158, 87, 0.3);
+}
+
+
+/* LOGOUT */
+
+.admin-btn-danger {
+  color: #ff7b7b;
+
+  background:
+    rgba(255, 70, 70, 0.055);
+
+  border-color:
+    rgba(255, 70, 70, 0.2);
+}
+
+.admin-btn-danger:hover {
+  color: #fff;
+
+  background:
+    rgba(255, 70, 70, 0.13);
+
+  border-color:
+    rgba(255, 70, 70, 0.4);
+}
+
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+
+.admin-overview {
+  width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+
+  margin-bottom: 40px;
+}
+
+.admin-stat-card {
+  position: relative;
+
+  min-height: 90px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 17px 19px;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #151515,
+      #101010
+    );
+
+  border:
+    1px solid rgba(216, 154, 43, 0.12);
+
+  border-radius: 16px;
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.22);
+
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+
+  border-color:
+    rgba(216, 154, 43, 0.3);
+}
+
+.admin-stat-card::after {
+  content: "";
+
+  position: absolute;
+
+  right: -35px;
+  bottom: -55px;
+
+  width: 110px;
+  height: 110px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(216, 154, 43, 0.055);
+}
+
+.admin-stat-icon {
+  width: 45px;
+  height: 45px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  color: #d89a2b;
+
+  background:
+    rgba(216, 154, 43, 0.1);
+
+  font-size: 18px;
+}
+
+.admin-stat-card span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #666;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.admin-stat-card strong {
+  display: block;
+
+  color: #eee;
+
+  font-size: 25px;
+  line-height: 1;
+
+  font-weight: 900;
+}
+
+.admin-stat-available .admin-stat-icon {
+  color: #65d88a;
+  background: rgba(101, 216, 138, 0.09);
+}
+
+.admin-stat-hidden .admin-stat-icon {
+  color: #ff5050;
+  background: rgba(255, 80, 80, 0.09);
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+   IMPORTANT: FULL WIDTH
+========================================================= */
+
+.admin-content {
+  width: 100% !important;
+
+  max-width: none !important;
+
+  margin: 0 !important;
+
+  padding: 0 5px !important;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   MENU HEADING
+========================================================= */
+
+.admin-section-heading {
+  width: 100%;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 25px;
+
+  margin-bottom: 22px;
+
+  padding: 0 2px 22px;
+
+  box-sizing: border-box;
+
+  border-bottom:
+    1px solid rgba(216, 154, 43, 0.12);
+}
+
+.admin-section-label {
+  margin: 0 0 6px;
+
+  color: #d89a2b;
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 0.14em;
+}
+
+.admin-section-heading h2 {
+  margin: 0;
+
+  color: #f2f2f2;
+
+  font-size: 28px;
+
+  font-weight: 850;
+
+  letter-spacing: -0.025em;
+}
+
+.admin-section-heading p:not(.admin-section-label) {
+  margin: 6px 0 0;
+
+  color: #6c6c6c;
+
+  font-size: 11px;
+}
+
+.dish-count-badge {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 10px 15px;
+
+  color: #d89a2b;
+
+  background:
+    rgba(216, 154, 43, 0.07);
+
+  border:
+    1px solid rgba(216, 154, 43, 0.18);
+
+  border-radius: 10px;
+
+  font-size: 11px;
+  font-weight: 850;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   MENU SECTIONS
+========================================================= */
+
+.menu-section {
+  width: 100%;
+
+  margin-bottom: 38px;
+}
+
+.menu-section-header {
+  width: 100%;
+
+  min-height: 64px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 16px;
+
+  margin-bottom: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #19150e,
+      #11100d
+    );
+
+  border:
+    1px solid rgba(216, 154, 43, 0.19);
+
+  border-radius: 14px;
+
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.menu-section-header > div {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+}
+
+.menu-section-icon {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  color: #111;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e2a63f,
+      #b97617
+    );
+
+  font-size: 16px;
+}
+
+.menu-section-header h3 {
+  margin: 0;
+
+  color: #d89a2b;
+
+  font-size: 18px;
+  font-weight: 900;
+
+  letter-spacing: 0.03em;
+
+  text-transform: uppercase;
+}
+
+.menu-section-header p {
+  margin: 2px 0 0;
+
+  color: #666;
+
+  font-size: 9px;
+}
+
+.section-count {
+  min-width: 31px;
+  height: 31px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  color: #111;
+
+  background: #d89a2b;
+
+  font-size: 11px;
+  font-weight: 900;
+}
+
+
+/* =========================================================
+   DISH GRID
+   MORE WIDTH / LESS EMPTY SPACE
+========================================================= */
+
+.dish-grid {
+  width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(265px, 1fr)
+    );
+
+  gap: 14px;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   DISH CARD
+========================================================= */
+
+.dish-card {
+  position: relative;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #151515,
+      #0e0e0e
+    );
+
+  border:
+    1px solid rgba(216, 154, 43, 0.12);
+
+  border-radius: 17px;
+
+  box-shadow:
+    0 12px 35px rgba(0, 0, 0, 0.28);
+
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.dish-card:hover {
+  transform: translateY(-4px);
+
+  border-color:
+    rgba(216, 154, 43, 0.3);
+
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.4);
+}
+
+.dish-card-hidden {
+  opacity: 0.65;
+}
+
+
+/* =========================================================
+   IMAGE
+========================================================= */
+
+.dish-image-wrapper {
+  position: relative;
+
+  height: 185px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at center,
+      #242424 0%,
+      #101010 65%,
+      #0a0a0a 100%
+    );
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.035);
+}
+
+.dish-image-wrapper::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      transparent 55%,
+      rgba(0, 0, 0, 0.48)
+    );
+}
+
+.dish-image {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  padding: 10px;
+
+  box-sizing: border-box;
+
+  transition:
+    transform 0.35s ease;
+}
+
+.dish-card:hover .dish-image {
+  transform: scale(1.07);
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.dish-status {
+  position: absolute;
+
+  top: 10px;
+  left: 10px;
+
+  z-index: 3;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding: 6px 9px;
+
+  border-radius: 8px;
+
+  backdrop-filter: blur(10px);
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.04em;
+
+  text-transform: uppercase;
+}
+
+.status-available {
+  color: #65d88a;
+
+  background:
+    rgba(9, 60, 25, 0.84);
+
+  border:
+    1px solid rgba(101, 216, 138, 0.2);
+}
+
+.status-hidden {
+  color: #ff5050;
+
+  background:
+    rgba(65, 10, 10, 0.84);
+
+  border:
+    1px solid rgba(255, 80, 80, 0.2);
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: currentColor;
+
+  box-shadow:
+    0 0 7px currentColor;
+}
+
+
+/* =========================================================
+   CARD CONTENT
+========================================================= */
+
+.dish-card-content {
+  padding: 16px;
+}
+
+.dish-title-row {
+  min-height: 50px;
+}
+
+.dish-title-row h4 {
+  margin: 0;
+
+  color: #f1f1f1;
+
+  font-size: 17px;
+  line-height: 1.25;
+
+  font-weight: 850;
+}
+
+.dish-meta {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  margin-top: 6px;
+
+  color: #666;
+
+  font-size: 8px;
+  font-weight: 750;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.admin-field {
+  margin-top: 13px;
+}
+
+.admin-field label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #666;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.12em;
+}
+
+.admin-field input,
+.admin-field textarea {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  outline: none;
+
+  color: #e8e8e8;
+
+  background:
+    #0b0b0b;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 8px;
+
+  font-family: inherit;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.admin-field input {
+  height: 38px;
+
+  padding: 0 10px;
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-field textarea {
+  min-height: 67px;
+
+  padding: 9px 10px;
+
+  resize: vertical;
+
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.admin-field input:focus,
+.admin-field textarea:focus {
+  background: #111;
+
+  border-color:
+    rgba(216, 154, 43, 0.55);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(216, 154, 43, 0.06);
+}
+
+.admin-field input::placeholder,
+.admin-field textarea::placeholder {
+  color: #444;
+}
+
+
+/* =========================================================
+   PRICE
+========================================================= */
+
+.price-input {
+  position: relative;
+}
+
+.price-input span {
+  position: absolute;
+
+  left: 11px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  color: #d89a2b;
+
+  font-size: 12px;
+  font-weight: 900;
+
+  pointer-events: none;
+}
+
+.price-input input {
+  padding-left: 27px;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.dish-actions {
+  display: grid;
+
+  grid-template-columns:
+    0.85fr 1.15fr;
+
+  gap: 7px;
+
+  margin-top: 14px;
+}
+
+.dish-action-btn {
+  min-height: 39px;
+
+  padding: 8px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.dish-action-btn:hover {
+  transform: translateY(-2px);
+}
+
+
+/* HIDE */
+
+.hide-btn {
+  color: #ff6666;
+
+  background:
+    rgba(255, 70, 70, 0.07);
+
+  border:
+    1px solid rgba(255, 70, 70, 0.18);
+}
+
+.hide-btn:hover {
+  background:
+    rgba(255, 70, 70, 0.14);
+}
+
+
+/* SHOW */
+
+.show-btn {
+  color: #65d88a;
+
+  background:
+    rgba(101, 216, 138, 0.07);
+
+  border:
+    1px solid rgba(101, 216, 138, 0.18);
+}
+
+.show-btn:hover {
+  background:
+    rgba(101, 216, 138, 0.14);
+}
+
+
+/* SAVE */
+
+.save-btn {
+  color: #111;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e5aa45,
+      #c58422
+    );
+
+  border: 1px solid #d89a2b;
+
+  box-shadow:
+    0 5px 15px
+    rgba(216, 154, 43, 0.1);
+}
+
+.save-btn:hover {
+  background:
+    linear-gradient(
+      145deg,
+      #f0b957,
+      #d8912a
+    );
+
+  box-shadow:
+    0 8px 22px
+    rgba(216, 154, 43, 0.2);
+}
+
+
+/* =========================================================
+   CASH COUPON MODAL
+========================================================= */
+
+.coupon-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  background:
+    rgba(0, 0, 0, 0.8);
+
+  backdrop-filter: blur(10px);
+
+  animation:
+    admin-overlay-in 0.2s ease;
+}
+
+.coupon-modal {
+  position: relative;
+
+  width: 455px;
+  max-width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 29px;
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #1a1a1a,
+      #0e0e0e
+    );
+
+  border:
+    1px solid rgba(216, 154, 43, 0.3);
+
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.7),
+    0 0 50px rgba(216, 154, 43, 0.05);
+
+  animation:
+    admin-modal-in 0.25s ease;
+}
+
+.coupon-close {
+  position: absolute;
+
+  top: 13px;
+  right: 13px;
+
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 50%;
+
+  color: #888;
+
+  background: #222;
+
+  font-size: 21px;
+
+  cursor: pointer;
+}
+
+.coupon-close:hover {
+  color: #fff;
+  background: #303030;
+}
+
+
+/* MODAL HEADER */
+
+.coupon-modal-header {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+}
+
+.coupon-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 13px;
+
+  color: #111;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e6ad48,
+      #b97618
+    );
+
+  font-size: 21px;
+
+  box-shadow:
+    0 8px 25px rgba(216, 154, 43, 0.15);
+}
+
+.coupon-modal-header p {
+  margin: 0 0 3px;
+
+  color: #666;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.14em;
+}
+
+.coupon-modal h2 {
+  margin: 0;
+
+  color: #d89a2b;
+
+  font-size: 23px;
+}
+
+.coupon-description {
+  margin: 17px 0;
+
+  color: #777;
+
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+
+/* FORM */
+
+.coupon-form {
+  display: grid;
+
+  gap: 14px;
+}
+
+.coupon-field label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #666;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.12em;
+}
+
+.coupon-field input,
+.coupon-field select {
+  width: 100%;
+  height: 45px;
+
+  box-sizing: border-box;
+
+  padding: 0 12px;
+
+  outline: none;
+
+  color: #eee;
+
+  background: #0b0b0b;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 9px;
+
+  font-family: inherit;
+
+  font-size: 12px;
+}
+
+.coupon-field input:focus,
+.coupon-field select:focus {
+  border-color:
+    rgba(216, 154, 43, 0.55);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(216, 154, 43, 0.06);
+}
+
+.coupon-amount {
+  position: relative;
+}
+
+.coupon-amount span {
+  position: absolute;
+
+  left: 13px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  color: #d89a2b;
+
+  font-weight: 900;
+}
+
+.coupon-amount input {
+  padding-left: 29px;
+}
+
+
+/* ERROR */
+
+.coupon-error {
+  margin-top: 13px;
+
+  padding: 10px 12px;
+
+  color: #ff7272;
+
+  background:
+    rgba(255, 70, 70, 0.07);
+
+  border:
+    1px solid rgba(255, 70, 70, 0.15);
+
+  border-radius: 9px;
+
+  font-size: 11px;
+  font-weight: 750;
+}
+
+
+/* =========================================================
+   COUPON ACTIONS
+========================================================= */
+
+.coupon-actions {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 8px;
+
+  margin-top: 19px;
+}
+
+.coupon-actions button {
+  min-height: 44px;
+
+  border: 0;
+  border-radius: 9px;
+
+  font-family: inherit;
+
+  font-size: 11px;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.coupon-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.coupon-generate-btn,
+.coupon-done-btn {
+  color: #081008;
+
+  background:
+    linear-gradient(
+      145deg,
+      #69d985,
+      #3c9e57
+    );
+}
+
+.coupon-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.coupon-cancel-btn {
+  color: #ccc;
+
+  background: #252525;
+}
+
+.coupon-print-btn {
+  color: #111;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e5aa45,
+      #c58422
+    );
+}
+
+
+/* =========================================================
+   RECEIPT
+========================================================= */
+
+.coupon-receipt {
+  text-align: center;
+}
+
+.coupon-receipt > .coupon-icon {
+  margin: 0 auto 14px;
+}
+
+.coupon-label {
+  margin: 0;
+
+  color: #666;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.16em;
+}
+
+.coupon-receipt h2 {
+  margin: 5px 0 17px;
+
+  color: #eee;
+
+  font-size: 23px;
+}
+
+.coupon-code {
+  padding: 16px;
+
+  margin-bottom: 18px;
+
+  border-radius: 11px;
+
+  color: #d89a2b;
+
+  background: #090909;
+
+  border:
+    1px dashed rgba(216, 154, 43, 0.4);
+
+  font-size: 21px;
+  font-weight: 900;
+
+  letter-spacing: 0.14em;
+}
+
+.receipt-details {
+  display: grid;
+
+  gap: 9px;
+
+  padding: 15px;
+
+  border-radius: 12px;
+
+  background: #121212;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.055);
+}
+
+.receipt-details > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.receipt-details span {
+  color: #666;
+
+  font-size: 11px;
+}
+
+.receipt-details strong {
+  color: #eee;
+
+  font-size: 12px;
+
+  text-align: right;
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes admin-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-modal-in {
+  from {
+    opacity: 0;
+    transform:
+      translateY(15px)
+      scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1250px) {
+  .admin-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-header-actions {
+    width: 100%;
+
+    justify-content: flex-start;
+  }
+
+  .admin-overview {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .admin-page {
+    padding: 18px 14px 50px;
+  }
+
+  .admin-header {
+    padding: 17px;
+
+    border-radius: 15px;
+  }
+
+  .admin-brand h1 {
+    font-size: 23px;
+  }
+
+  .admin-header-actions {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    width: 100%;
+  }
+
+  .admin-btn {
+    width: 100%;
+
+    padding: 0 10px;
+
+    font-size: 10px;
+  }
+
+  .admin-overview {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 9px;
+  }
+
+  .admin-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dish-grid {
+    grid-template-columns:
+      repeat(
+        auto-fill,
+        minmax(230px, 1fr)
+      );
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dish-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dish-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .coupon-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   PRINT
+========================================================= */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .coupon-receipt,
+  .coupon-receipt * {
+    visibility: visible;
+  }
+
+  .coupon-receipt {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+
+    width: 100%;
+  }
+
+  .coupon-actions,
+  .coupon-close {
+    display: none !important;
+  }
+}

@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaHome } from "react-icons/fa";
+import {
+  FaHome,
+  FaUserShield,
+  FaUser,
+  FaLock,
+  FaSignInAlt,
+  FaChevronDown,
+} from "react-icons/fa";
+
+import "./StaffLogin.css";
 
 export default function StaffLogin() {
   const [role, setRole] = useState("CHEF");
-  const [username, setUsername] =
-    useState("");
-  const [password, setPassword] =
-    useState("");
-  const [loading, setLoading] =
-    useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -22,52 +28,42 @@ export default function StaffLogin() {
 
   const handleLogin = async () => {
     if (!username || !password) {
-      alert(
-        "Please enter username and password"
-      );
+      alert("Please enter username and password");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "/api/staff/login",
-        {
-          method: "POST",
+      const response = await fetch("/api/staff/login", {
+        method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-          body: JSON.stringify({
-            username,
-            password,
-          }),
-        }
-      );
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-          "Login failed"
+          data.message || "Login failed"
         );
       }
 
       const staff = data.staff;
 
       /*
-        Make sure the selected role
-        matches the actual account role.
+        Make sure selected role
+        matches actual account role.
       */
 
-      if (
-        staff.role !== role
-      ) {
+      if (staff.role !== role) {
         alert(
           `This account is a ${staff.role} account. Please select ${staff.role}.`
         );
@@ -76,9 +72,7 @@ export default function StaffLogin() {
       }
 
       /*
-        Store only session information
-        locally.
-
+        Store session information.
         Password is NOT stored.
       */
 
@@ -104,20 +98,23 @@ export default function StaffLogin() {
         staff.username
       );
 
-      // Redirect based on role
+      /*
+        Redirect based on role.
+      */
 
       if (staff.role === "CHEF") {
-        navigate("/chef", { replace: true });
-      } else if (
-        staff.role === "WAITER"
-      ) {
-        navigate("/waiter", { replace: true });
-      } else if (
-        staff.role === "ADMIN"
-      ) {
-        navigate("/admin", { replace: true });
+        navigate("/chef", {
+          replace: true,
+        });
+      } else if (staff.role === "WAITER") {
+        navigate("/waiter", {
+          replace: true,
+        });
+      } else if (staff.role === "ADMIN") {
+        navigate("/admin", {
+          replace: true,
+        });
       }
-
     } catch (error) {
       console.error(
         "Staff login error:",
@@ -126,236 +123,252 @@ export default function StaffLogin() {
 
       alert(
         error.message ||
-        "Unable to login"
+          "Unable to login"
       );
-
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#050505",
-        display: "flex",
-        justifyContent:
-          "center",
-        alignItems: "center",
-        position: "relative",
-      }}
-    >
+    <div className="staff-page">
 
-      {/* HOME BUTTON */}
+      {/* =========================================
+          BACKGROUND EFFECTS
+      ========================================= */}
+
+      <div className="staff-glow staff-glow-one" />
+      <div className="staff-glow staff-glow-two" />
+
+      <div className="staff-grid" />
+
+
+      {/* =========================================
+          HOME BUTTON
+      ========================================= */}
 
       <button
-        onClick={() =>
-          navigate("/home")
-        }
-        style={{
-          position: "absolute",
-          top: "30px",
-          left: "30px",
-          padding:
-            "14px 24px",
-          background:
-            "linear-gradient(135deg,#d89a2b,#ffcc66)",
-          color: "#111",
-          border: "none",
-          borderRadius: "12px",
-          cursor: "pointer",
-          fontWeight: "bold",
-          fontSize: "16px",
-          display: "flex",
-          alignItems:
-            "center",
-          gap: "8px",
-          boxShadow:
-            "0 0 20px rgba(216,154,43,.3)",
-        }}
+        className="staff-home-button"
+        onClick={() => navigate("/home")}
       >
         <FaHome />
-        HOME
+
+        <span>
+          HOME
+        </span>
       </button>
 
-      {/* LOGIN CARD */}
 
-      <div
-        style={{
-          width: "420px",
-          padding: "40px",
-          background: "#111",
-          borderRadius: "20px",
-          border:
-            "1px solid #d89a2b",
-          textAlign: "center",
-          boxShadow:
-            "0 0 40px rgba(216,154,43,.12)",
-        }}
-      >
+      {/* =========================================
+          LOGIN CARD
+      ========================================= */}
 
-        <h1
-          style={{
-            color: "#d89a2b",
-            marginBottom:
-              "10px",
-          }}
-        >
+      <div className="staff-login-card">
+
+        {/* Top decorative line */}
+
+        <div className="staff-card-line" />
+
+
+        {/* =======================================
+            LOGO / ICON
+        ======================================= */}
+
+        <div className="staff-login-icon">
+
+          <FaUserShield />
+
+        </div>
+
+
+        <div className="staff-eyebrow">
+          RESTAURANT MANAGEMENT SYSTEM
+        </div>
+
+
+        <h1>
           STAFF LOGIN
         </h1>
 
-        <p
-          style={{
-            color: "#888",
-            marginBottom:
-              "30px",
-          }}
-        >
-          Login using your
-          staff account
+
+        <p className="staff-subtitle">
+          Sign in to access your staff dashboard
         </p>
 
-        {/* ROLE */}
 
-        <select
-          value={role}
-          onChange={(e) =>
-            setRole(e.target.value)
-          }
-          style={{
-            width: "100%",
-            padding: "15px",
-            marginBottom:
-              "15px",
-            borderRadius:
-              "10px",
-            background:
-              "#222",
-            color:
-              "white",
-            border:
-              "1px solid #444",
-            fontSize:
-              "16px",
-          }}
-        >
-          <option value="CHEF">
-            Chef
-          </option>
+        {/* =======================================
+            ROLE
+        ======================================= */}
 
-          <option value="WAITER">
-            Waiter
-          </option>
+        <div className="staff-field">
 
-          <option value="ADMIN">
-            Admin
-          </option>
-        </select>
+          <label>
+            STAFF ROLE
+          </label>
 
-        {/* USERNAME */}
 
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) =>
-            setUsername(
-              e.target.value
-            )
-          }
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter"
-            ) {
-              handleLogin();
-            }
-          }}
-          style={{
-            width: "100%",
-            padding: "15px",
-            marginBottom:
-              "15px",
-            borderRadius:
-              "10px",
-            border:
-              "1px solid #444",
-            background:
-              "#222",
-            color:
-              "white",
-            boxSizing:
-              "border-box",
-          }}
-        />
+          <div className="staff-input-wrapper">
 
-        {/* PASSWORD */}
+            <FaUserShield className="field-icon" />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
-          }
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter"
-            ) {
-              handleLogin();
-            }
-          }}
-          style={{
-            width: "100%",
-            padding: "15px",
-            marginBottom:
-              "20px",
-            borderRadius:
-              "10px",
-            border:
-              "1px solid #444",
-            background:
-              "#222",
-            color:
-              "white",
-            boxSizing:
-              "border-box",
-          }}
-        />
+            <select
+              value={role}
+              onChange={(e) =>
+                setRole(e.target.value)
+              }
+              disabled={loading}
+            >
 
-        {/* LOGIN */}
+              <option value="CHEF">
+                Chef
+              </option>
+
+              <option value="WAITER">
+                Waiter
+              </option>
+
+              <option value="ADMIN">
+                Admin
+              </option>
+
+            </select>
+
+            <FaChevronDown className="select-arrow" />
+
+          </div>
+
+        </div>
+
+
+        {/* =======================================
+            USERNAME
+        ======================================= */}
+
+        <div className="staff-field">
+
+          <label>
+            USERNAME
+          </label>
+
+
+          <div className="staff-input-wrapper">
+
+            <FaUser className="field-icon" />
+
+            <input
+              type="text"
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) =>
+                setUsername(
+                  e.target.value
+                )
+              }
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter"
+                ) {
+                  handleLogin();
+                }
+              }}
+              disabled={loading}
+              autoComplete="username"
+            />
+
+          </div>
+
+        </div>
+
+
+        {/* =======================================
+            PASSWORD
+        ======================================= */}
+
+        <div className="staff-field">
+
+          <label>
+            PASSWORD
+          </label>
+
+
+          <div className="staff-input-wrapper">
+
+            <FaLock className="field-icon" />
+
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter"
+                ) {
+                  handleLogin();
+                }
+              }}
+              disabled={loading}
+              autoComplete="current-password"
+            />
+
+          </div>
+
+        </div>
+
+
+        {/* =======================================
+            LOGIN BUTTON
+        ======================================= */}
 
         <button
+          className={`staff-login-button ${
+            loading
+              ? "staff-login-loading"
+              : ""
+          }`}
           onClick={handleLogin}
           disabled={loading}
-          style={{
-            width: "100%",
-            padding: "15px",
-            background:
-              loading
-                ? "#666"
-                : "#d89a2b",
-            border: "none",
-            borderRadius:
-              "10px",
-            fontWeight:
-              "bold",
-            cursor:
-              loading
-                ? "not-allowed"
-                : "pointer",
-            fontSize:
-              "16px",
-          }}
         >
-          {loading
-            ? "LOGGING IN..."
-            : "LOGIN"}
+
+          {loading ? (
+            <>
+              <span className="login-spinner" />
+
+              LOGGING IN...
+            </>
+          ) : (
+            <>
+              <FaSignInAlt />
+
+              LOGIN TO DASHBOARD
+            </>
+          )}
+
         </button>
 
+
+        {/* =======================================
+            FOOTER
+        ======================================= */}
+
+        <div className="staff-login-footer">
+
+          <span className="footer-dot" />
+
+          <span>
+            Authorized staff access only
+          </span>
+
+          <span className="footer-dot" />
+
+        </div>
+
       </div>
+
     </div>
   );
 }

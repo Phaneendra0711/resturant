@@ -1,4 +1,10 @@
 import { useNavigate } from "react-router-dom";
+import {
+  FaUserShield,
+  FaArrowRight,
+  FaUtensils,
+} from "react-icons/fa";
+
 import logo from "./assets/bg.png";
 import "./Landing.css";
 
@@ -8,75 +14,143 @@ export default function Landing() {
   return (
     <div className="landing-page">
 
-<button
-  onClick={() => navigate("/staff-login")}
-  style={{
-    position: "fixed",
-    top: "25px",
-    right: "30px",
-    zIndex: 1000,
+      {/* =========================================
+          BACKGROUND EFFECTS
+      ========================================= */}
 
-    background:
-      "linear-gradient(135deg, #f5b942, #d88916)",
-    color: "#111",
+      <div className="landing-glow landing-glow-main" />
+      <div className="landing-glow landing-glow-small" />
 
-    border: "none",
-    padding: "15px 32px",
-    borderRadius: "12px",
+      <div className="landing-grid" />
 
-    cursor: "pointer",
-    fontWeight: "800",
-    fontSize: "15px",
-    letterSpacing: "1px",
 
-    boxShadow:
-      "0 5px 20px rgba(216,154,43,.4)",
+      {/* =========================================
+          STAFF PORTAL
+      ========================================= */}
 
-    transition: "all 0.2s ease",
-  }}
->
-  STAFF PORTAL
-</button>
+      <button
+        className="landing-staff-button"
+        onClick={() =>
+          navigate("/staff-login")
+        }
+      >
+        <FaUserShield />
 
-      <div className="landing-glow"></div>
+        <span>
+          STAFF PORTAL
+        </span>
 
-      <div className="landing-content">
+      </button>
 
-        <img
-          src={logo}
-          alt="Order Now Eat Now"
-          className="landing-logo"
-        />
+
+      {/* =========================================
+          MAIN CONTENT
+      ========================================= */}
+
+      <main className="landing-content">
+
+        {/* LOGO */}
+
+        <div className="landing-logo-wrapper">
+
+          <div className="logo-ring logo-ring-one" />
+          <div className="logo-ring logo-ring-two" />
+
+          <img
+            src={logo}
+            alt="Order Now Eat Now"
+            className="landing-logo"
+          />
+
+        </div>
+
+
+        {/* SUBTITLE */}
 
         <p className="landing-subtitle">
           PREMIUM RESTAURANT EXPERIENCE
         </p>
 
+
+        {/* TITLE */}
+
         <h1 className="landing-title">
-          ORDER NOW
-          <span> EAT NOW</span>
+
+          <span className="title-white">
+            ORDER NOW
+          </span>
+
+          <span className="title-gold">
+            EAT NOW
+          </span>
+
         </h1>
+
+
+        {/* DIVIDER */}
 
         <div className="landing-divider">
 
-          <div className="divider-line"></div>
+          <div className="divider-line" />
 
-          <div className="divider-icon">
-            ✦
+          <div className="divider-center">
+
+            <span>
+              ✦
+            </span>
+
           </div>
 
-          <div className="divider-line"></div>
+          <div className="divider-line" />
 
         </div>
 
+
+        {/* DESCRIPTION */}
+
+        <p className="landing-description">
+          A smarter way to order,
+          track and enjoy your meal.
+        </p>
+
+
+        {/* ORDER BUTTON */}
+
         <button
           className="landing-btn"
-          onClick={() => navigate("/home")}
+          onClick={() =>
+            navigate("/home")
+          }
         >
-          ORDER NOW →
+
+          <span className="landing-btn-icon">
+            <FaUtensils />
+          </span>
+
+          <span>
+            ORDER NOW
+          </span>
+
+          <FaArrowRight className="landing-btn-arrow" />
+
         </button>
 
-      </div>
+
+        {/* FOOTER TEXT */}
+
+        <div className="landing-footer">
+
+          <span className="footer-line" />
+
+          <span>
+            ORDER • TRACK • ENJOY
+          </span>
+
+          <span className="footer-line" />
+
+        </div>
+
+      </main>
 
     </div>
   );
