@@ -6,10 +6,10 @@ const couponSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0,
       validate: {
-        validator: (value) => Number.isInteger(value) && value > 0,
-        message: "Coupon amount must be a whole number",
+        validator: (value) => Number.isInteger(value) && value >= 0,
+        message: "Coupon amount must be a whole non-negative number",
       },
     },
     customerName: { type: String, required: true, trim: true },
@@ -23,7 +23,7 @@ const couponSchema = new mongoose.Schema(
         message: "Table number must be between 1 and 30",
       },
     },
-    issuedById: { type: mongoose.Schema.Types.ObjectId, ref: "Staff", required: true },
+    issuedById: { type: mongoose.Schema.Types.ObjectId, ref: "Staff", default: null },
     issuedByName: { type: String, default: "" },
     source: { type: String, enum: ["CASH", "CREDIT"], default: "CASH" },
     redeemedAt: { type: Date, default: null },

@@ -400,6 +400,24 @@ const orderSchema = new mongoose.Schema(
       trim: true,
     },
 
+    compensationCouponCode: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    compensationCouponAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    compensationDelaySeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     /*
     ==================================================
     DESCRIPTIONS

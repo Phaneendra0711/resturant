@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import Staff from "../models/Staff.js";
 import CreditTransaction from "../models/CreditTransaction.js";
 import StaffSession from "../models/StaffSession.js";
+import { applyChefIdlePenalty, applyWaiterIdlePenalty } from "../utils/credits.js";
 
 const router = express.Router();
 
@@ -52,6 +53,10 @@ router.post("/login", async (req, res) => {
     }
 
     staff.onlineAt = new Date();
+    staff.chefIdleSince = null;
+    staff.chefPenaltyStartedAt = null;
+    staff.waiterIdleSince = null;
+    staff.waiterPenaltyStartedAt = null;
     await staff.save();
     await StaffSession.create({ staffId: staff._id, role: staff.role, loginAt: staff.onlineAt });
 
@@ -78,10 +83,27 @@ router.post("/login", async (req, res) => {
 
 router.get("/:id/credits", async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id).select("name role creditPoints");
+    const staff = await Staff.findById(req.params.id).select("name role creditPoints onlineAt chefIdleSince waiterIdleSince chefPenaltyStartedAt waiterPenaltyStartedAt");
     if (!staff) return res.status(404).json({ success: false, message: "Staff member not found" });
+
+    let idlePenaltyState = { active: false, seconds: 0 };
+
+    if (staff.role === "CHEF") {
+      idlePenaltyState = await applyChefIdlePenalty({ staffId: staff._id, now: new Date() });
+    } else if (staff.role === "WAITER") {
+      idlePenaltyState = await applyWaiterIdlePenalty({ staffId: staff._id, now: new Date() });
+    }
+
+    const updatedStaff = await Staff.findById(req.params.id).select("name role creditPoints");
     const transactions = await CreditTransaction.find({ staffId: staff._id }).sort({ createdAt: -1 }).limit(50);
-    return res.json({ success: true, creditPoints: staff.creditPoints, transactions });
+    return res.json({
+      success: true,
+      staffRole: updatedStaff.role,
+      creditPoints: updatedStaff.creditPoints,
+      idlePenaltyActive: idlePenaltyState.active,
+      idlePenaltySeconds: idlePenaltyState.seconds,
+      transactions,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to fetch credits" });
   }
@@ -89,7 +111,7 @@ router.get("/:id/credits", async (req, res) => {
 
 router.patch("/:id/logout", async (req, res) => {
   try {
-    await Staff.findByIdAndUpdate(req.params.id, { $set: { onlineAt: null } });
+    await Staff.findByIdAndUpdate(req.params.id, { $set: { onlineAt: null, chefIdleSince: null, chefPenaltyStartedAt: null, waiterIdleSince: null, waiterPenaltyStartedAt: null } });
     await StaffSession.findOneAndUpdate(
       { staffId: req.params.id, logoutAt: null },
       { $set: { logoutAt: new Date() } },

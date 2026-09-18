@@ -702,6 +702,19 @@
   color: #fff;
 }
 
+.service-only-preference {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid rgba(216, 154, 43, 0.38);
+  border-radius: 9px;
+  background: #090909;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 
 /* =========================================================
    SERVING ESTIMATE
@@ -1496,6 +1509,44 @@
   min-height: 72px;
 
   resize: vertical;
+}
+
+.optional-note-box {
+  display: block;
+
+  width: 100%;
+
+  min-height: 72px;
+
+  padding: 12px 13px;
+
+  border: 1px solid rgba(216, 154, 43, 0.42);
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: rgba(0, 0, 0, 0.6);
+
+  color: #fff;
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: 12px;
+
+  resize: vertical;
+
+  transition: 0.2s ease;
+}
+
+.optional-note-box:focus {
+  border-color: #d89a2b;
+
+  box-shadow: 0 0 0 2px rgba(216, 154, 43, 0.06);
+}
+
+.optional-note-box::placeholder {
+  color: #666;
 }
 
 .form-group input::placeholder,

@@ -48,6 +48,12 @@ export default function Status() {
   });
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [showCompensation, setShowCompensation] = useState(false);
+  const [compensationPosition, setCompensationPosition] = useState({
+    left: null,
+    top: 128,
+  });
+  const [dragStart, setDragStart] = useState(null);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -119,6 +125,44 @@ export default function Status() {
       clearInterval(interval);
 
   }, []);
+
+  useEffect(() => {
+    if (order?.compensationCouponCode) {
+      setShowCompensation(true);
+    }
+  }, [order?.status, order?.compensationCouponCode]);
+
+  useEffect(() => {
+    if (!dragStart) return undefined;
+
+    const handlePointerMove = (event) => {
+      const nextLeft = Math.max(
+        0,
+        Math.min(
+          window.innerWidth - dragStart.width,
+          dragStart.left + event.clientX - dragStart.x
+        )
+      );
+      const nextTop = Math.max(
+        0,
+        Math.min(
+          window.innerHeight - dragStart.height,
+          dragStart.top + event.clientY - dragStart.y
+        )
+      );
+
+      setCompensationPosition({ left: nextLeft, top: nextTop });
+    };
+
+    const stopDragging = () => setDragStart(null);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+    };
+  }, [dragStart]);
 
   if (!order) {
 
@@ -238,10 +282,10 @@ export default function Status() {
   };
 
   const isServiceItem = (item) =>
-    String(item?.serviceType || "").toUpperCase() === "SERVICE" ||
-    ["WATER BOTTLE", "COKE", "COCA COLA"].includes(
-      String(item?.name || "").trim().toUpperCase()
-    );
+    ((["BEVERAGES", "BEVERAGE"].includes(String(item?.category || "").trim().toUpperCase()))
+      ? ["WATER BOTTLE", "COKE", "COCA COLA"].includes(String(item?.name || "").trim().toUpperCase())
+      : String(item?.serviceType || "").toUpperCase() === "SERVICE") ||
+    ["WATER BOTTLE", "COKE", "COCA COLA"].includes(String(item?.name || "").trim().toUpperCase());
 
   const getServiceWaitingLabel = (item) => {
     const preference = String(
@@ -587,6 +631,69 @@ export default function Status() {
       </div>
 
       {/* MAIN GRID */}
+
+      {showCompensation && order.compensationCouponCode && (
+        <div
+          className="compensation-overlay"
+          style={{
+            left: compensationPosition.left === null ? undefined : `${compensationPosition.left}px`,
+            right: compensationPosition.left === null ? undefined : "auto",
+            top: compensationPosition.left === null ? undefined : `${compensationPosition.top}px`,
+          }}
+        >
+          <div className="compensation-card">
+            <h2
+              className="compensation-drag-handle"
+              onPointerDown={(event) => {
+                const rect = event.currentTarget.closest(".compensation-card").getBoundingClientRect();
+                setDragStart({
+                  x: event.clientX,
+                  y: event.clientY,
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                });
+              }}
+            >
+              {order.status === "SERVED" ? "😔 Sorry for the inconvenience" : "😔 Sorry for the delay"}
+            </h2>
+            <p>
+              {order.status === "SERVED"
+                ? "Here is your compensation coupon."
+                : "Your compensation is being calculated until your order is served."}
+            </p>
+
+            <div className="compensation-code">
+              {order.compensationCouponCode}
+            </div>
+
+            <div className="compensation-details">
+              <div>
+                <span>Amount</span>
+                <strong>₹{Number(order.compensationCouponAmount || 0).toFixed(0)}</strong>
+              </div>
+              <div>
+                <span>Delay time</span>
+                <strong>{Number(order.compensationDelaySeconds || 0)} seconds</strong>
+              </div>
+            </div>
+
+            <p className="compensation-note">
+              Compensation increases by ₹1 for every 6 seconds of delay. You can use this coupon on your next order.
+            </p>
+
+            {order.status === "SERVED" && (
+              <button
+                className="compensation-ok-btn"
+                onClick={() => setShowCompensation(false)}
+              >
+                OK
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="premium-grid">
 

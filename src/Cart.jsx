@@ -48,19 +48,12 @@ const QUICK_ITEMS = [
 
 const isServiceItem = (item) => {
 
-  const category =
-    String(
-      item?.category || ""
-    ).trim().toUpperCase();
-
   const name =
     String(
       item?.name || ""
     ).trim().toLowerCase();
 
   return (
-    category === "BEVERAGES" ||
-    category === "BEVERAGE" ||
     name.includes("water bottle") ||
     name === "coke" ||
     name.includes("coca cola")
@@ -303,13 +296,7 @@ const normalizeCart = (
 
           servicePreference:
             item.servicePreference ||
-            (
-              String(item.name || "")
-                .trim()
-                .toLowerCase() === "coke"
-                ? "FIRST"
-                : "NOW"
-            ),
+            "NOW",
         };
 
       }
@@ -403,6 +390,8 @@ export default function Cart() {
 
   const [showCashConfirm, setShowCashConfirm] = useState(false);
   const [showOptionalInputs, setShowOptionalInputs] = useState(false);
+  const [showChefDescription, setShowChefDescription] = useState(false);
+  const [showWaiterDescription, setShowWaiterDescription] = useState(false);
   const [cashRequestCooldownUntil, setCashRequestCooldownUntil] = useState(() => {
     const saved = Number(localStorage.getItem("cashRequestCooldownUntil") || 0);
     return Number.isFinite(saved) ? saved : 0;
@@ -721,9 +710,7 @@ export default function Cart() {
         1,
 
       servicePreference:
-        quickItem.name.toLowerCase() === "coke"
-          ? "FIRST"
-          : "NOW",
+        "NOW",
     };
 
 
@@ -1698,34 +1685,20 @@ export default function Cart() {
                               SERVE WHEN?
                             </label>
 
-                            <select
-                              value={
-                                item.servicePreference ||
-                                "NOW"
-                              }
-                              onChange={(
-                                e
-                              ) =>
-                                changeServicePreference(
-                                  item.id,
-                                  e.target.value
-                                )
-                              }
-                            >
-
-                              <option value="NOW">
+                            {foodItems.length === 0 ? (
+                              <span className="service-only-preference">
                                 Serve Now
-                              </option>
-
-                              <option value="FIRST">
-                                With 1st Preference
-                              </option>
-
-                              <option value="LAST">
-                                With Last Preference
-                              </option>
-
-                            </select>
+                              </span>
+                            ) : (
+                              <select
+                                value={item.servicePreference || "NOW"}
+                                onChange={(e) => changeServicePreference(item.id, e.target.value)}
+                              >
+                                <option value="NOW">Serve Now</option>
+                                <option value="FIRST">With 1st Preference</option>
+                                <option value="LAST">With Last Preference</option>
+                              </select>
+                            )}
 
                           </>
 
@@ -2287,7 +2260,7 @@ export default function Cart() {
 
               <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#ffffff", fontWeight: 700, letterSpacing: "0.06em" }}>
                     COUPON CODE
                   </label>
                   <button
@@ -2346,12 +2319,12 @@ export default function Cart() {
                 )}
 
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#ffffff", fontWeight: 700, letterSpacing: "0.06em" }}>
                     DESCRIPTION TO CHEF
                   </label>
                   <button
                     type="button"
-                    onClick={() => setChefDescription((prev) => prev ? prev : "")}
+                    onClick={() => setShowChefDescription((prev) => !prev)}
                     style={{
                       padding: "8px 12px",
                       borderRadius: "8px",
@@ -2362,26 +2335,26 @@ export default function Cart() {
                       cursor: "pointer",
                     }}
                   >
-                    + ADD
+                    {showChefDescription ? "CLOSE" : "+ ADD"}
                   </button>
                 </div>
 
-                {chefDescription !== "" && (
+                {showChefDescription && (
                   <textarea
+                    className="optional-note-box"
                     value={chefDescription}
                     onChange={(e) => setChefDescription(e.target.value)}
                     placeholder="Less spicy, no onions, extra crispy..."
-                    style={{ minHeight: "70px" }}
                   />
                 )}
 
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <label style={{ flex: 1, fontSize: "12px", color: "#f4c45f", fontWeight: 700, letterSpacing: "0.06em" }}>
+                  <label style={{ flex: 1, fontSize: "12px", color: "#ffffff", fontWeight: 700, letterSpacing: "0.06em" }}>
                     DESCRIPTION TO WAITER
                   </label>
                   <button
                     type="button"
-                    onClick={() => setWaiterDescription((prev) => prev ? prev : "")}
+                    onClick={() => setShowWaiterDescription((prev) => !prev)}
                     style={{
                       padding: "8px 12px",
                       borderRadius: "8px",
@@ -2392,16 +2365,16 @@ export default function Cart() {
                       cursor: "pointer",
                     }}
                   >
-                    + ADD
+                    {showWaiterDescription ? "CLOSE" : "+ ADD"}
                   </button>
                 </div>
 
-                {waiterDescription !== "" && (
+                {showWaiterDescription && (
                   <textarea
+                    className="optional-note-box"
                     value={waiterDescription}
                     onChange={(e) => setWaiterDescription(e.target.value)}
                     placeholder="Bring extra plates, serve after 10 minutes..."
-                    style={{ minHeight: "70px" }}
                   />
                 )}
               </div>

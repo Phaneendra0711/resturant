@@ -42,6 +42,27 @@ const staffSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Tracks when a chef became idle while logged in and waiting for a task.
+    chefIdleSince: {
+      type: Date,
+      default: null,
+    },
+
+    chefPenaltyStartedAt: {
+      type: Date,
+      default: null,
+    },
+
+    waiterIdleSince: {
+      type: Date,
+      default: null,
+    },
+
+    waiterPenaltyStartedAt: {
+      type: Date,
+      default: null,
+    },
+
     // ==========================================
     // WAITER ACTIVE TASKS
     // ==========================================

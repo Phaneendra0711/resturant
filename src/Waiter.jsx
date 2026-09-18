@@ -40,10 +40,10 @@ const getItemName = (item) =>
   item?.name || "Item";
 
 const getStaffId = () =>
-  localStorage.getItem("staffId");
+  sessionStorage.getItem("staffId");
 
 const getStaffName = () =>
-  localStorage.getItem(
+  sessionStorage.getItem(
     "staffName"
   ) || "Waiter";
 
@@ -71,6 +71,12 @@ const isWaterOrCoke = (item) => {
 };
 
 const isServiceItem = (item) => {
+  const category = String(item?.category || "").trim().toUpperCase();
+
+  if (category === "BEVERAGES" || category === "BEVERAGE") {
+    return isWaterOrCoke(item);
+  }
+
   if (
     String(
       item?.serviceType || ""
@@ -339,6 +345,9 @@ export default function Waiter() {
     useState(new Date());
   const [creditPoints, setCreditPoints] = useState(0);
   const [creditChange, setCreditChange] = useState(null);
+  const [idlePenaltyActive, setIdlePenaltyActive] = useState(false);
+  const [idlePenaltySeconds, setIdlePenaltySeconds] = useState(0);
+  const [authChecking, setAuthChecking] = useState(true);
   const previousCreditPoints = useRef(null);
 
   const staffId =
@@ -353,17 +362,19 @@ export default function Waiter() {
 
   useEffect(() => {
     const role =
-      localStorage.getItem(
+      sessionStorage.getItem(
         "userRole"
       );
 
     if (role !== "waiter") {
       navigate("/staff-login");
+      return;
     }
+    setAuthChecking(false);
   }, [navigate]);
 
   useEffect(() => {
-    if (!staffId) return undefined;
+    if (authChecking || !staffId) return undefined;
     const loadCredits = async () => {
       const response = await fetch(`/api/staff/${staffId}/credits`);
       if (response.ok) {
@@ -374,12 +385,14 @@ export default function Waiter() {
         }
         previousCreditPoints.current = nextPoints;
         setCreditPoints(nextPoints);
+        setIdlePenaltyActive(Boolean(data.idlePenaltyActive));
+        setIdlePenaltySeconds(Number(data.idlePenaltySeconds || 0));
       }
     };
     loadCredits();
-    const interval = setInterval(loadCredits, 5000);
+    const interval = setInterval(loadCredits, 1000);
     return () => clearInterval(interval);
-  }, [staffId]);
+  }, [authChecking, staffId, navigate]);
 
   useEffect(() => {
     if (creditChange === null) return undefined;
@@ -544,13 +557,30 @@ export default function Waiter() {
   ======================================================= */
 
   const readyTaskGroups = useMemo(
-    () => groupTasks(
-      orders,
-      (order, item) => (
-        (isFoodItem(item) && item.status === "READY") ||
-        (isServiceItem(item) && String(item?.status || "") === "WAITING" && serviceAvailable(order, item))
-      )
-    ),
+    () => {
+      const tasks = groupTasks(
+        orders,
+        (order, item) => (
+          (isFoodItem(item) && item.status === "READY") ||
+          (isServiceItem(item) && String(item?.status || "") === "WAITING" && serviceAvailable(order, item))
+        )
+      );
+
+      return tasks.sort((firstTask, secondTask) => {
+        const firstReadyAt = firstTask.items
+          .map((item) => item.readyAt)
+          .filter(Boolean)
+          .map((value) => new Date(value).getTime())
+          .sort((a, b) => a - b)[0] || new Date(firstTask.order.createdAt).getTime();
+        const secondReadyAt = secondTask.items
+          .map((item) => item.readyAt)
+          .filter(Boolean)
+          .map((value) => new Date(value).getTime())
+          .sort((a, b) => a - b)[0] || new Date(secondTask.order.createdAt).getTime();
+
+        return firstReadyAt - secondReadyAt;
+      });
+    },
     [orders]
   );
 
@@ -631,6 +661,9 @@ export default function Waiter() {
 
   const activeCount =
     activeTasks.length;
+
+  const idleBannerVisible = idlePenaltyActive || idlePenaltySeconds > 0;
+  const idleCountdownSeconds = Math.max(0, 30 - idlePenaltySeconds);
 
   const hasFreeSlot =
     activeCount <
@@ -917,23 +950,27 @@ export default function Waiter() {
      LOGOUT
   ======================================================= */
 
-  const logout = () => {
+  const logout = async () => {
     if (staffId) {
-      fetch(`/api/staff/${staffId}/logout`, { method: "PATCH", keepalive: true });
+      try {
+        await fetch(`/api/staff/${staffId}/logout`, { method: "PATCH", keepalive: true });
+      } catch (error) {
+        console.error("Waiter logout error:", error);
+      }
     }
-    localStorage.removeItem(
+    sessionStorage.removeItem(
       "userRole"
     );
 
-    localStorage.removeItem(
+    sessionStorage.removeItem(
       "staffId"
     );
 
-    localStorage.removeItem(
+    sessionStorage.removeItem(
       "staffName"
     );
 
-    localStorage.removeItem(
+    sessionStorage.removeItem(
       "staffUsername"
     );
 
@@ -1084,8 +1121,7 @@ export default function Waiter() {
     request
   ) => {
     const isCashRequest =
-      String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT" ||
-      String(request?.paymentType || "").toUpperCase() === "CASH";
+      String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT";
 
     return (
       <Card
@@ -1189,8 +1225,7 @@ export default function Waiter() {
       const request =
         task.request;
       const isCashRequest =
-        String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT" ||
-        String(request?.paymentType || "").toUpperCase() === "CASH";
+        String(request?.type || "ASSISTANCE").toUpperCase() === "CASH_PAYMENT";
 
       return (
         <Card
@@ -1230,31 +1265,41 @@ export default function Waiter() {
             )}
           </div>
 
-          <Timer
-            startedAt={
-              request.acceptedAt
-            }
-            targetMinutes={
-              isCashRequest ? 10 : ASSISTANCE_TARGET_MINUTES
-            }
-            label={isCashRequest ? "CASH" : "ASSISTANCE"}
-          />
-
-          <button
-            className="problem-btn"
-            onClick={() =>
-              completeAssistance(
-                request._id
-              )
-            }
+          <div
             style={{
-              minWidth: 200,
-              padding:
-                "14px 20px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+              flexShrink: 0,
             }}
           >
-            {isCashRequest ? "✓ CASH RECEIVED" : "✓ PROBLEM SORTED"}
-          </button>
+            <Timer
+              startedAt={
+                request.acceptedAt
+              }
+              targetMinutes={
+                isCashRequest ? 10 : ASSISTANCE_TARGET_MINUTES
+              }
+              label={isCashRequest ? "CASH" : "ASSISTANCE"}
+            />
+
+            <button
+              className="problem-btn"
+              onClick={() =>
+                completeAssistance(
+                  request._id
+                )
+              }
+              style={{
+                minWidth: 200,
+                padding:
+                  "14px 20px",
+              }}
+            >
+              {isCashRequest ? "✓ CASH RECEIVED" : "✓ PROBLEM SORTED"}
+            </button>
+          </div>
         </Card>
       );
     }
@@ -1469,6 +1514,7 @@ export default function Waiter() {
                   <div>
                     <h3>
                       {items.map((item, index) => (
+
                         <span key={getItemId(item)}>
                           {index > 0 && " + "}
                           {type === "SERVICE" ? "💧" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
@@ -1663,7 +1709,10 @@ export default function Waiter() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className={`waiter-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
-              <span style={{ color: "#ffcc4d", fontWeight: 800 }}>★ {creditPoints}</span>
+              <div className="credit-score">
+                <span className="credit-star">★</span>
+                <span className={`credit-number ${creditChange === null ? "credit-neutral" : creditChange > 0 ? "credit-positive" : "credit-negative"}`}>{creditPoints}</span>
+              </div>
               {creditChange !== null && (
                 <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
                   {creditChange > 0 ? `+${creditChange}` : creditChange}
@@ -1680,6 +1729,19 @@ export default function Waiter() {
             </div>
           </div>
         </div>
+
+        {idleBannerVisible && (
+          <div className={`waiter-idle-penalty ${idlePenaltyActive ? "active" : "countdown"}`}>
+            <strong>
+              {idlePenaltyActive ? "Idle penalty active" : "Deduction starts soon"}
+            </strong>
+            <span>
+              {idlePenaltyActive
+                ? `-1 point/sec · ${idlePenaltySeconds}s`
+                : `Deduction starts in ${idleCountdownSeconds}s`}
+            </span>
+          </div>
+        )}
 
         <div
           style={{

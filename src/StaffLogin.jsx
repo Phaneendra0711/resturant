@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 
@@ -12,6 +12,13 @@ export default function StaffLogin() {
     useState(false);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("staffId");
+    localStorage.removeItem("staffName");
+    localStorage.removeItem("staffUsername");
+  }, []);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -75,22 +82,24 @@ export default function StaffLogin() {
         Password is NOT stored.
       */
 
-      localStorage.setItem(
+      sessionStorage.clear();
+
+      sessionStorage.setItem(
         "userRole",
         staff.role.toLowerCase()
       );
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         "staffId",
         staff._id
       );
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         "staffName",
         staff.name
       );
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         "staffUsername",
         staff.username
       );
@@ -98,15 +107,15 @@ export default function StaffLogin() {
       // Redirect based on role
 
       if (staff.role === "CHEF") {
-        navigate("/chef");
+        navigate("/chef", { replace: true });
       } else if (
         staff.role === "WAITER"
       ) {
-        navigate("/waiter");
+        navigate("/waiter", { replace: true });
       } else if (
         staff.role === "ADMIN"
       ) {
-        navigate("/admin");
+        navigate("/admin", { replace: true });
       }
 
     } catch (error) {

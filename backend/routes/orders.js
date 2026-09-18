@@ -4,9 +4,70 @@ import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import AssistanceRequest from "../models/AssistanceRequest.js";
 import Coupon from "../models/Coupon.js";
-import { addCredits, todayFoodServedCount } from "../utils/credits.js";
+import { addCredits, todayWaiterOrderCount } from "../utils/credits.js";
 
 const router = express.Router();
+
+const compensationCode = () => `COMP-${String(Math.floor(10000 + Math.random() * 90000))}`;
+
+const ensureCompensationCoupon = async (order, servedAt) => {
+  const isServed = order.status === "SERVED";
+  const completionTime = isServed
+    ? order.waiter?.servedAt ||
+      order.items.find((item) => item.servedAt)?.servedAt ||
+      servedAt
+    : servedAt;
+
+  const estimateMinutes = (
+    Number(order.customerEstimate?.firstMinutes || 0) +
+    Number(order.customerEstimate?.lastMinutes || 0)
+  ) / 2;
+  const estimatedSeconds = Math.max(0, estimateMinutes * 60);
+  const actualSeconds = secondsBetween(order.createdAt, completionTime);
+  const delaySeconds = Math.max(0, actualSeconds - estimatedSeconds);
+  if (delaySeconds <= 0) return null;
+  const amount = Math.floor(delaySeconds / 6);
+
+  if (order.compensationCouponCode) {
+    const coupon = await Coupon.findOne({ code: order.compensationCouponCode });
+    if (coupon && coupon.redeemedAt === null && coupon.amount !== amount) {
+      coupon.amount = amount;
+      await coupon.save();
+    }
+    if (order.compensationDelaySeconds !== Math.floor(delaySeconds) || order.compensationCouponAmount !== amount) {
+      order.compensationCouponAmount = amount;
+      order.compensationDelaySeconds = Math.floor(delaySeconds);
+      await order.save();
+    }
+    return coupon;
+  }
+
+  let coupon = null;
+  for (let attempt = 0; attempt < 10 && !coupon; attempt += 1) {
+    try {
+      coupon = await Coupon.create({
+        code: compensationCode(),
+        amount,
+        customerName: order.customerName,
+        tableNumber: Number(order.tableNumber) || 1,
+        issuedByName: "SYSTEM COMPENSATION",
+        source: "CREDIT",
+        redeemedAt: null,
+        redeemedOrderId: null,
+      });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+    }
+  }
+
+  if (!coupon) throw new Error("Could not generate compensation coupon");
+
+  order.compensationCouponCode = coupon.code;
+  order.compensationCouponAmount = amount;
+  order.compensationDelaySeconds = Math.floor(delaySeconds);
+  await order.save();
+  return coupon;
+};
 
 /* =========================================================
    HELPERS
@@ -27,13 +88,25 @@ const normalizeRole = (role) =>
    remain FOOD and go to the Chef.
 */
 const isServiceItem = (item) => {
-  if (String(item?.serviceType || "").toUpperCase() === "SERVICE") {
-    return true;
-  }
-
   const name = String(item?.name || "")
     .trim()
     .toUpperCase();
+
+  const category = String(item?.category || "")
+    .trim()
+    .toUpperCase();
+
+  if (category === "BEVERAGES" || category === "BEVERAGE") {
+    return (
+      name === "WATER BOTTLE" ||
+      name === "COKE" ||
+      name === "COCA COLA"
+    );
+  }
+
+  if (String(item?.serviceType || "").toUpperCase() === "SERVICE") {
+    return true;
+  }
 
   return (
     name === "WATER BOTTLE" ||
@@ -108,7 +181,16 @@ const chefTimerPoints = (item, finishedAt) => {
 const waiterTimerPoints = (item, finishedAt) => {
   const elapsedSeconds = secondsBetween(item.waiterAssignedAt, finishedAt);
   const targetSeconds = (isFood(item) ? 8 : 5) * 60;
-  return { points: Math.max(0, Math.floor((targetSeconds - elapsedSeconds) / 2)), elapsedSeconds };
+  if (elapsedSeconds <= targetSeconds) {
+    const remainingSeconds = targetSeconds - elapsedSeconds;
+    return { points: remainingSeconds, elapsedSeconds, reason: "WAITER_ON_TIME_SERVICE" };
+  }
+
+  return {
+    points: -2 * (elapsedSeconds - targetSeconds),
+    elapsedSeconds,
+    reason: "WAITER_LATE_SERVICE",
+  };
 };
 
 const getWaiterTaskGroup = (order, item) => {
@@ -337,6 +419,16 @@ router.post("/", async (req, res) => {
       (item) => item.serviceType === "FOOD"
     );
 
+    if (foodItems.length === 0) {
+      rawNormalizedItems.forEach((item) => {
+        if (item.serviceType === "SERVICE") {
+          item.servicePreference = "NOW";
+          item.serviceGroup = "NOW";
+          item.preference = "SERVE NOW";
+        }
+      });
+    }
+
     /*
       -------------------------------------------------------
       CUSTOMER ESTIMATE
@@ -378,6 +470,9 @@ router.post("/", async (req, res) => {
         15 +
         differentItems * 10 +
         extraQuantityMinutes;
+    } else if (orderedItems.length === 1) {
+      customerFirstMinutes = 10;
+      customerLastMinutes = 10;
     }
 
     /*
@@ -781,6 +876,11 @@ router.get("/:id", async (req, res) => {
         message: "Order not found",
       });
     }
+
+    const completionTime = order.status === "SERVED"
+      ? order.waiter?.servedAt || order.items.find((item) => item.servedAt)?.servedAt || new Date()
+      : new Date();
+    await ensureCompensationCoupon(order, completionTime);
 
     return res.json({
       success: true,
@@ -1239,29 +1339,35 @@ router.patch(
         order.waiter.servedAt = now;
       }
       await order.save();
+      await ensureCompensationCoupon(order, now);
 
-      let servedToday = await todayFoodServedCount(staffId);
+      const completedOrdersToday = await todayWaiterOrderCount(staffId, now);
       for (const servedItem of groupItems) {
-        if (!isFood(servedItem)) continue;
-
-        await addCredits({
-          staffId, staffName, role: "WAITER", points: 100,
-          reason: "WAITER_FOOD_SERVED", orderId: order._id,
-          itemId: String(servedItem._id),
-        });
-
-        if (servedToday < 100) {
-          const fast = waiterTimerPoints(servedItem, now);
-          if (fast.points > 0) {
-            await addCredits({
-              staffId, staffName, role: "WAITER", points: fast.points,
-              reason: "WAITER_FAST_SERVICE", orderId: order._id,
-              itemId: `fast-${servedItem._id}`,
-              elapsedSeconds: fast.elapsedSeconds,
-            });
-          }
+        const timerPoints = waiterTimerPoints(servedItem, now);
+        if (timerPoints.points !== 0) {
+          await addCredits({
+            staffId,
+            staffName,
+            role: "WAITER",
+            points: timerPoints.points,
+            reason: timerPoints.reason,
+            orderId: order._id,
+            itemId: String(servedItem._id),
+            elapsedSeconds: timerPoints.elapsedSeconds,
+          });
         }
-        servedToday += 1;
+
+        if (completedOrdersToday >= 101) {
+          await addCredits({
+            staffId,
+            staffName,
+            role: "WAITER",
+            points: isFood(servedItem) ? 100 : 50,
+            reason: isFood(servedItem) ? "WAITER_101ST_FOOD_BONUS" : "WAITER_101ST_SERVICE_BONUS",
+            orderId: order._id,
+            itemId: String(servedItem._id),
+          });
+        }
       }
 
       return res.json({
@@ -1793,6 +1899,7 @@ router.patch(
         }
 
         await order.save();
+        await ensureCompensationCoupon(order, now);
 
         return res.json({
           success: true,

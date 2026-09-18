@@ -15,9 +15,16 @@ import logo from "./assets/bg.png";
 
 import "./Chef.css";
 
-const isFoodItem = (item) =>
-  String(item?.serviceType || "FOOD").toUpperCase() !==
-  "SERVICE";
+const isFoodItem = (item) => {
+  const name = String(item?.name || "").trim().toUpperCase();
+  const category = String(item?.category || "").trim().toUpperCase();
+
+  if (category === "BEVERAGES" || category === "BEVERAGE") {
+    return !["WATER BOTTLE", "COKE", "COCA COLA"].includes(name);
+  }
+
+  return String(item?.serviceType || "FOOD").toUpperCase() !== "SERVICE";
+};
 
 /*
   ==========================================================
@@ -304,38 +311,50 @@ export default function Chef() {
     useState(new Date());
   const [creditPoints, setCreditPoints] = useState(0);
   const [creditChange, setCreditChange] = useState(null);
+  const [idlePenaltyActive, setIdlePenaltyActive] = useState(false);
+  const [idlePenaltySeconds, setIdlePenaltySeconds] = useState(0);
+  const [authChecking, setAuthChecking] = useState(true);
   const previousCreditPoints = useRef(null);
 
   const currentStaffId =
-    localStorage.getItem("staffId");
+    sessionStorage.getItem("staffId");
 
   const currentStaffName =
-    localStorage.getItem("staffName");
+    sessionStorage.getItem("staffName");
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (currentStaffId) {
-      fetch(`/api/staff/${currentStaffId}/logout`, { method: "PATCH", keepalive: true });
+      try {
+        await fetch(`/api/staff/${currentStaffId}/logout`, {
+          method: "PATCH",
+          keepalive: true,
+        });
+      } catch (error) {
+        console.error("Chef logout error:", error);
+      }
     }
-    localStorage.removeItem("adminAuth");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("staffId");
-    localStorage.removeItem("staffName");
-    localStorage.removeItem("staffUsername");
+    sessionStorage.removeItem("adminAuth");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("staffId");
+    sessionStorage.removeItem("staffName");
+    sessionStorage.removeItem("staffUsername");
 
     navigate("/staff-login");
   };
 
   useEffect(() => {
     const role =
-      localStorage.getItem("userRole");
+      sessionStorage.getItem("userRole");
 
     if (role !== "chef") {
       navigate("/staff-login");
+      return;
     }
+    setAuthChecking(false);
   }, [navigate]);
 
   useEffect(() => {
-    if (!currentStaffId) return undefined;
+    if (authChecking || !currentStaffId) return undefined;
     const loadCredits = async () => {
       const response = await fetch(`/api/staff/${currentStaffId}/credits`);
       if (response.ok) {
@@ -346,12 +365,14 @@ export default function Chef() {
         }
         previousCreditPoints.current = nextPoints;
         setCreditPoints(nextPoints);
+        setIdlePenaltyActive(Boolean(data.idlePenaltyActive));
+        setIdlePenaltySeconds(Number(data.idlePenaltySeconds || 0));
       }
     };
     loadCredits();
-    const interval = setInterval(loadCredits, 5000);
+    const interval = setInterval(loadCredits, 1000);
     return () => clearInterval(interval);
-  }, [currentStaffId]);
+  }, [authChecking, currentStaffId, navigate]);
 
   useEffect(() => {
     if (creditChange === null) return undefined;
@@ -434,7 +455,7 @@ export default function Chef() {
 
     const interval = setInterval(
       fetchOrders,
-      2000
+      1000
     );
 
     return () =>
@@ -716,6 +737,9 @@ export default function Chef() {
         )
     ).length;
 
+  const idleBannerVisible = idlePenaltyActive || idlePenaltySeconds > 0;
+  const idleCountdownSeconds = Math.max(0, 30 - idlePenaltySeconds);
+
   /*
     ==========================================================
     NEW ORDERS
@@ -957,7 +981,15 @@ export default function Chef() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className={`chef-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
-              <span style={{ color: "#ffcc4d", fontWeight: 800 }}>★ {creditPoints}</span>
+              <div className="credit-score">
+                <span className="credit-star">★</span>
+                <span
+                  key={creditPoints}
+                  className={`credit-number ${idlePenaltyActive || creditChange < 0 ? "credit-negative" : creditChange > 0 ? "credit-positive" : "credit-neutral"}`}
+                >
+                  {creditPoints}
+                </span>
+              </div>
               {creditChange !== null && (
                 <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
                   {creditChange > 0 ? `+${creditChange}` : creditChange}
@@ -974,6 +1006,29 @@ export default function Chef() {
             </div>
           </div>
         </div>
+
+        {idleBannerVisible && (
+          <div style={{
+            margin: "0 0 16px 0",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            background: idlePenaltyActive ? "rgba(239, 68, 68, 0.12)" : "rgba(245, 158, 11, 0.12)",
+            border: idlePenaltyActive ? "1px solid rgba(239, 68, 68, 0.35)" : "1px solid rgba(245, 158, 11, 0.35)",
+            color: idlePenaltyActive ? "#ffd5d5" : "#ffe9a6",
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}>
+            <span>{idlePenaltyActive ? "Idle penalty active" : "Idle reduction tracking"}</span>
+            <span style={{ color: idlePenaltyActive ? "#ffb4b4" : "#fcd34d", fontSize: 12 }}>
+              {idlePenaltyActive ? `−1/sec · ${idlePenaltySeconds}s` : `Starts in ${idleCountdownSeconds}s`}
+            </span>
+          </div>
+        )}
 
         <div className="chef-stats">
           <div className="chef-stat-card">

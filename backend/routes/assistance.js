@@ -5,6 +5,30 @@ import { addCredits } from "../utils/credits.js";
 
 const router = express.Router();
 
+const secondsBetween = (from, to = new Date()) => Math.max(
+  0,
+  Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 1000)
+);
+
+const assistanceTimerPoints = (request, finishedAt) => {
+  const elapsedSeconds = secondsBetween(request.acceptedAt, finishedAt);
+  const targetSeconds = request.type === "CASH_PAYMENT" ? 10 * 60 : 8 * 60;
+
+  if (elapsedSeconds <= targetSeconds) {
+    return {
+      points: targetSeconds - elapsedSeconds,
+      elapsedSeconds,
+      reason: "WAITER_ASSISTANCE_ON_TIME",
+    };
+  }
+
+  return {
+    points: -2 * (elapsedSeconds - targetSeconds),
+    elapsedSeconds,
+    reason: "WAITER_ASSISTANCE_LATE",
+  };
+};
+
 
 /*
 ==================================================
@@ -340,16 +364,6 @@ router.patch(
         });
       }
 
-      await addCredits({
-        staffId,
-        staffName: request.acceptedByName,
-        role: "WAITER",
-        points: 50,
-        reason: "WAITER_ASSISTANCE_COMPLETED",
-        assistanceId: request._id,
-      });
-
-
       console.log(
         "🔔 ASSISTANCE ACCEPTED:",
         request._id,
@@ -495,6 +509,19 @@ router.patch(
 
           message:
             "Active assistance request not found for this waiter.",
+        });
+      }
+
+      const timerPoints = assistanceTimerPoints(request, now);
+      if (timerPoints.points !== 0) {
+        await addCredits({
+          staffId,
+          staffName: request.acceptedByName,
+          role: "WAITER",
+          points: timerPoints.points,
+          reason: timerPoints.reason,
+          assistanceId: request._id,
+          elapsedSeconds: timerPoints.elapsedSeconds,
         });
       }
 

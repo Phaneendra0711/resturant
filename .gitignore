@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 t.zip
+WhatsApp Image *.jpeg
 
 # Environment variables and secrets
 .env

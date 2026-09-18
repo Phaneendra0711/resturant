@@ -28,6 +28,117 @@ body {
   overflow: hidden;
 }
 
+.compensation-overlay {
+  position: fixed;
+  right: 24px;
+  top: 128px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.compensation-card {
+  width: min(420px, calc(100vw - 48px));
+  padding: 24px;
+  border: 1px solid rgba(216, 154, 43, .45);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #1a1409, #0d0d0d);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.compensation-card h2 {
+  color: #f4c45f;
+  margin-bottom: 10px;
+}
+
+.compensation-drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.compensation-drag-handle:active {
+  cursor: grabbing;
+}
+
+.compensation-card p {
+  color: #ddd;
+}
+
+.compensation-code {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px dashed #d89a2b;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.compensation-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.compensation-details div {
+  padding: 13px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .06);
+}
+
+.compensation-details span,
+.compensation-details strong {
+  display: block;
+}
+
+.compensation-details span {
+  color: #999;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.compensation-details strong {
+  color: #4ade80;
+  font-size: 20px;
+}
+
+.compensation-note {
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .compensation-overlay {
+    right: 0;
+    top: auto;
+    bottom: 12px;
+    width: 100%;
+    padding: 12px;
+  }
+
+  .compensation-card {
+    width: 100%;
+  }
+}
+
+.compensation-ok-btn {
+  min-width: 120px;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #d89a2b, #f4c45f);
+  color: #111;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 /* BACKGROUND ORBS */
 
 .status-bg-orb {
