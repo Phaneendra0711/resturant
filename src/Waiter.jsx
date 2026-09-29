@@ -32,8 +32,8 @@ const getItemId = (item) =>
 const getItemQuantity = (item) =>
   Number(
     item?.quantity ??
-    item?.qty ??
-    1
+      item?.qty ??
+      1
   );
 
 const getItemName = (item) =>
@@ -98,7 +98,7 @@ const getServicePreference = (
   const direct =
     String(
       item?.servicePreference ||
-      ""
+        ""
     )
       .trim()
       .toUpperCase();
@@ -218,8 +218,8 @@ function Timer({
   const start =
     startedAt
       ? new Date(
-        startedAt
-      ).getTime()
+          startedAt
+        ).getTime()
       : now;
 
   const elapsed = Math.max(
@@ -534,7 +534,7 @@ export default function Waiter() {
     ) {
       const last =
         foods[
-        foods.length - 1
+          foods.length - 1
         ];
 
       return [
@@ -624,12 +624,12 @@ export default function Waiter() {
         assistanceRequests.filter(
           (request) =>
             request.status ===
-            "ACCEPTED" &&
+              "ACCEPTED" &&
             String(
               request.acceptedById ||
-              ""
+                ""
             ) ===
-            String(staffId)
+              String(staffId)
         ),
       [
         assistanceRequests,
@@ -700,6 +700,36 @@ export default function Waiter() {
      ACCEPT ITEM
   ======================================================= */
 
+  const getOrderForTask = (orderId) =>
+    orders.find(
+      (order) =>
+        String(getOrderId(order)) ===
+        String(orderId)
+    );
+
+  const getItemsForTaskGroup = (
+    order,
+    groupId
+  ) => {
+    if (!order) return [];
+
+    return (order.items || []).filter(
+      (item) =>
+        getWaiterTaskGroup(
+          order,
+          item
+        ) === String(groupId)
+    );
+  };
+
+  /* =======================================================
+     ACCEPT ITEM GROUP
+
+     Use the existing individual-item endpoint instead of
+     /waiter-groups. This keeps the current grouping UI and
+     removes the failing group endpoint dependency.
+  ======================================================= */
+
   const acceptTaskGroup = async (
     orderId,
     groupId
@@ -712,33 +742,66 @@ export default function Waiter() {
     }
 
     try {
-      const response =
-        await fetch(
-          `/api/orders/${orderId}/waiter-groups/${encodeURIComponent(groupId)}/status`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              status:
-                "ON_THE_WAY",
-              staffId,
-              staffName,
-              staffRole:
-                "waiter",
-            }),
-          }
+      const currentOrder =
+        getOrderForTask(orderId);
+
+      const groupItems =
+        getItemsForTaskGroup(
+          currentOrder,
+          groupId
         );
 
-      const data =
-        await response.json();
-
-      if (!response.ok) {
+      if (
+        !currentOrder ||
+        groupItems.length === 0
+      ) {
         throw new Error(
-          data.message
+          "Waiter task group is no longer available."
         );
+      }
+
+      let latestOrder =
+        currentOrder;
+
+      for (
+        const item of groupItems
+      ) {
+        const itemId =
+          getItemId(item);
+
+        const response =
+          await fetch(
+            `/api/orders/${orderId}/items/${itemId}/status`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                status:
+                  "ON_THE_WAY",
+                staffId,
+                staffName,
+                staffRole:
+                  "waiter",
+              }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Failed to accept waiter task"
+          );
+        }
+
+        latestOrder =
+          data.order ||
+          latestOrder;
       }
 
       setOrders(
@@ -748,25 +811,31 @@ export default function Waiter() {
               String(
                 getOrderId(order)
               ) ===
-                String(orderId)
-                ? data.order
+              String(orderId)
+                ? latestOrder
                 : order
           )
       );
 
       setTab("ACTIVE");
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Accept waiter group error:",
+        error
+      );
 
       alert(
         error.message ||
-        "Unable to accept waiter task"
+          "Unable to accept waiter task"
       );
     }
   };
 
   /* =======================================================
-     SERVE ITEM
+     SERVE ITEM GROUP
+
+     Use the existing individual-item endpoint for every
+     item in this waiter group.
   ======================================================= */
 
   const serveTaskGroup = async (
@@ -774,32 +843,66 @@ export default function Waiter() {
     groupId
   ) => {
     try {
-      const response =
-        await fetch(
-          `/api/orders/${orderId}/waiter-groups/${encodeURIComponent(groupId)}/status`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              status: "SERVED",
-              staffId,
-              staffName,
-              staffRole:
-                "waiter",
-            }),
-          }
+      const currentOrder =
+        getOrderForTask(orderId);
+
+      const groupItems =
+        getItemsForTaskGroup(
+          currentOrder,
+          groupId
         );
 
-      const data =
-        await response.json();
-
-      if (!response.ok) {
+      if (
+        !currentOrder ||
+        groupItems.length === 0
+      ) {
         throw new Error(
-          data.message
+          "Waiter task group is no longer available."
         );
+      }
+
+      let latestOrder =
+        currentOrder;
+
+      for (
+        const item of groupItems
+      ) {
+        const itemId =
+          getItemId(item);
+
+        const response =
+          await fetch(
+            `/api/orders/${orderId}/items/${itemId}/status`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                status:
+                  "SERVED",
+                staffId,
+                staffName,
+                staffRole:
+                  "waiter",
+              }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Failed to serve waiter task"
+          );
+        }
+
+        latestOrder =
+          data.order ||
+          latestOrder;
       }
 
       setOrders(
@@ -809,17 +912,20 @@ export default function Waiter() {
               String(
                 getOrderId(order)
               ) ===
-                String(orderId)
-                ? data.order
+              String(orderId)
+                ? latestOrder
                 : order
           )
       );
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Serve waiter group error:",
+        error
+      );
 
       alert(
         error.message ||
-        "Unable to serve waiter task"
+          "Unable to serve waiter task"
       );
     }
   };
@@ -873,7 +979,7 @@ export default function Waiter() {
               String(
                 request._id
               ) ===
-                String(requestId)
+              String(requestId)
                 ? data.request
                 : request
           )
@@ -885,7 +991,7 @@ export default function Waiter() {
 
       alert(
         error.message ||
-        "Unable to accept assistance"
+          "Unable to accept assistance"
       );
     }
   };
@@ -931,7 +1037,7 @@ export default function Waiter() {
                 String(
                   request._id
                 ) ===
-                  String(requestId)
+                String(requestId)
                   ? data.request
                   : request
             )
@@ -941,7 +1047,7 @@ export default function Waiter() {
 
         alert(
           error.message ||
-          "Unable to complete assistance"
+            "Unable to complete assistance"
         );
       }
     };
@@ -1427,36 +1533,36 @@ export default function Waiter() {
 
             {pendingAssistance.length >
               0 && (
-                <>
-                  <h2
-                    className="waiter-section-title"
-                    style={{
-                      marginTop: 25,
-                    }}
-                  >
-                    🔔 ASSISTANCE REQUESTS
-                  </h2>
+              <>
+                <h2
+                  className="waiter-section-title"
+                  style={{
+                    marginTop: 25,
+                  }}
+                >
+                  🔔 ASSISTANCE REQUESTS
+                </h2>
 
-                  {pendingAssistance.map(
-                    renderAssistance
-                  )}
-                </>
-              )}
+                {pendingAssistance.map(
+                  renderAssistance
+                )}
+              </>
+            )}
 
             {readyCount ===
               0 && (
-                <div className="waiter-empty">
-                  <h1>
-                    NO READY TASKS
-                  </h1>
+              <div className="waiter-empty">
+                <h1>
+                  NO READY TASKS
+                </h1>
 
-                  <p>
-                    Waiting for food,
-                    Water/Coke or
-                    assistance.
-                  </p>
-                </div>
-              )}
+                <p>
+                  Waiting for food,
+                  Water/Coke or
+                  assistance.
+                </p>
+              </div>
+            )}
           </>
         );
       }
@@ -1492,9 +1598,9 @@ export default function Waiter() {
       ) {
         if (
           servedItems.length ===
-          0 &&
+            0 &&
           completedAssistance.length ===
-          0
+            0
         ) {
           return (
             <div className="waiter-empty">
@@ -1508,46 +1614,46 @@ export default function Waiter() {
         return (
           <>
             {servedItems.map(({ order, groupId, items, type }) => (
-              <Card
-                key={`${getOrderId(order)}-${groupId}`}
-              >
-                <div>
-                  <h3>
-                    {items.map((item, index) => (
-
-                      <span key={getItemId(item)}>
-                        {index > 0 && " + "}
-                        {type === "SERVICE" ? "💧" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
-                      </span>
-                    ))}
-                  </h3>
-
-                  <p>
-                    ORDER: #
-                    {String(
-                      getOrderId(
-                        order
-                      )
-                    ).slice(-6)}
-                  </p>
-
-                  <p>
-                    TABLE:{" "}
-                    {order.tableNumber ||
-                      "N/A"}
-                  </p>
-                </div>
-
-                <strong
-                  style={{
-                    color:
-                      "#22c55e",
-                  }}
+                <Card
+                  key={`${getOrderId(order)}-${groupId}`}
                 >
-                  SERVED
-                </strong>
-              </Card>
-            )
+                  <div>
+                    <h3>
+                      {items.map((item, index) => (
+
+                        <span key={getItemId(item)}>
+                          {index > 0 && " + "}
+                          {type === "SERVICE" ? "💧" : "🍽️"} {getItemName(item)} × {getItemQuantity(item)}
+                        </span>
+                      ))}
+                    </h3>
+
+                    <p>
+                      ORDER: #
+                      {String(
+                        getOrderId(
+                          order
+                        )
+                      ).slice(-6)}
+                    </p>
+
+                    <p>
+                      TABLE:{" "}
+                      {order.tableNumber ||
+                        "N/A"}
+                    </p>
+                  </div>
+
+                  <strong
+                    style={{
+                      color:
+                        "#22c55e",
+                    }}
+                  >
+                    SERVED
+                  </strong>
+                </Card>
+              )
             )}
 
             {completedAssistance.map(
@@ -1710,20 +1816,12 @@ export default function Waiter() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className={`waiter-time credit-points-box ${creditChange !== null ? "credit-points-pulse" : ""}`} style={{ margin: 0 }}>
               <div className="credit-score">
-                <span className="credit-star">✦</span>
+                <span className="credit-star">★</span>
                 <span className={`credit-number ${creditChange === null ? "credit-neutral" : creditChange > 0 ? "credit-positive" : "credit-negative"}`}>{creditPoints}</span>
               </div>
               {creditChange !== null && (
-                <span
-                  className={
-                    creditChange > 0
-                      ? "credit-change credit-change-positive"
-                      : "credit-change credit-change-negative"
-                  }
-                >
-                  {creditChange > 0
-                    ? `↑ +${creditChange} ✦`
-                    : `↓ ${creditChange} ✦`}
+                <span className={creditChange > 0 ? "credit-change credit-change-positive" : "credit-change credit-change-negative"}>
+                  {creditChange > 0 ? `+${creditChange}` : creditChange}
                 </span>
               )}
               <div><p>Credit Points</p></div>

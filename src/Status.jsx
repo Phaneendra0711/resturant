@@ -8,7 +8,6 @@ import {
   FaBell,
   FaMotorcycle,
   FaCheckCircle,
-  FaPhoneAlt,
   FaClock,
   FaCrown,
   FaReceipt,
@@ -199,19 +198,23 @@ export default function Status() {
 
   }
 
-  const subtotal =
-    order.totalAmount ??
+  const itemSubtotal =
     (order.items || []).reduce(
       (sum, item) =>
         sum +
         Number(item.price || 0) *
-        Number(
-          item.quantity ??
-          item.qty ??
-          1
-        ),
+          Number(
+            item.quantity ??
+            item.qty ??
+            1
+          ),
       0
     );
+
+  const subtotal =
+    Number(order.totalAmount) > 0
+      ? Number(order.totalAmount)
+      : itemSubtotal;
 
   const getStepStatus = (
     currentStatus,
@@ -303,50 +306,373 @@ export default function Status() {
     return "Waiting for pickup";
   };
 
+  const getItemEstimateText = (item, index = 0) => {
+    if (isServiceItem(item)) {
+      const preference = String(
+        item?.whenToServe ||
+        item?.servicePreference ||
+        item?.serviceGroup ||
+        item?.preference ||
+        ""
+      ).toUpperCase();
+
+      if (preference.includes("NOW")) {
+        return "Available now";
+      }
+
+      if (preference.includes("FIRST") || preference.includes("1ST")) {
+        return order?.customerEstimate?.firstMinutes
+          ? `With first preference • ~${order.customerEstimate.firstMinutes} min`
+          : "With first preference";
+      }
+
+      if (preference.includes("LAST")) {
+        return order?.customerEstimate?.lastMinutes
+          ? `With last preference • ~${order.customerEstimate.lastMinutes} min`
+          : "With last preference";
+      }
+
+      return "Waiter service";
+    }
+
+    if (Number(item?.customerFirstMinutes || 0) > 0) {
+      return `First preference • ~${item.customerFirstMinutes} min`;
+    }
+
+    if (Number(item?.customerLastMinutes || 0) > 0) {
+      return `Last item • ~${item.customerLastMinutes} min`;
+    }
+
+    return index === 0
+      ? "First preference"
+      : "In preference sequence";
+  };
+
   const renderItemTracker = (item) => {
     const service = isServiceItem(item);
+
     const steps = service
       ? [
-          { status: "WAITING", title: getServiceWaitingLabel(item), subtitle: "Service" },
-          { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
-          { status: "SERVED", title: "Served", subtitle: "Enjoy" },
+          {
+            status: "WAITING",
+            title: getServiceWaitingLabel(item),
+            subtitle: "Service",
+          },
+          {
+            status: "ON_THE_WAY",
+            title: "On The Way",
+            subtitle: "Serving",
+          },
+          {
+            status: "SERVED",
+            title: "Reached",
+            subtitle: "Enjoy",
+          },
         ]
       : [
-          { status: "ORDERED", title: "Ordered", subtitle: "Received" },
-          { status: "PREPARING", title: "Preparing", subtitle: "Kitchen" },
-          { status: "READY", title: "Ready", subtitle: "Pickup" },
-          { status: "ON_THE_WAY", title: "On The Way", subtitle: "Serving" },
-          { status: "SERVED", title: "Served", subtitle: "Enjoy" },
+          {
+            status: "ORDERED",
+            title: "Ordered",
+            subtitle: "Received",
+          },
+          {
+            status: "PREPARING",
+            title: "Preparing",
+            subtitle: "Kitchen",
+          },
+          {
+            status: "READY",
+            title: "Ready",
+            subtitle: "Pickup",
+          },
+          {
+            status: "ON_THE_WAY",
+            title: "On The Way",
+            subtitle: "Serving",
+          },
+          {
+            status: "SERVED",
+            title: "Served",
+            subtitle: "Enjoy",
+          },
         ];
 
     const icons = service
-      ? [<FaClock />, <FaMotorcycle />, <FaCheckCircle />]
-      : [<FaClipboardCheck />, <FaUtensils />, <FaBell />, <FaMotorcycle />, <FaCheckCircle />];
+      ? [
+          <FaClock />,
+          <FaMotorcycle />,
+          <FaCheckCircle />,
+        ]
+      : [
+          <FaClipboardCheck />,
+          <FaUtensils />,
+          <FaBell />,
+          <FaMotorcycle />,
+          <FaCheckCircle />,
+        ];
+
+    const currentStatus = String(
+      item?.status ||
+        (service ? "WAITING" : "ORDERED")
+    )
+      .trim()
+      .toUpperCase();
+
+    const foundIndex = steps.findIndex(
+      (step) => step.status === currentStatus
+    );
+
+    const currentIndex =
+      foundIndex >= 0 ? foundIndex : 0;
+
+    const statusLabel = service
+      ? currentStatus === "SERVED"
+        ? "REACHED"
+        : currentStatus === "ON_THE_WAY"
+          ? "ON THE WAY"
+          : "PLACED"
+      : currentStatus.replaceAll("_", " ");
+
+    const progressPercent =
+      steps.length > 1
+        ? (currentIndex / (steps.length - 1)) * 100
+        : 0;
 
     return (
       <div
-        className="item-tracking-row"
-        key={item._id || item.id || item.name}
+        key={
+          item._id ||
+          item.id ||
+          item.name
+        }
+        style={{
+          padding: "22px 0 26px",
+          borderTop:
+            "1px solid rgba(216,154,43,.14)",
+        }}
       >
-        <div className="item-tracking-heading">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "20px",
+            marginBottom: "20px",
+          }}
+        >
           <div>
-            <span>{service ? "SERVICE ITEM" : "FOOD ITEM"}</span>
-            <h3>{item.name} × {item.quantity ?? item.qty ?? 1}</h3>
+            <div
+              style={{
+                color: "#d89a2b",
+                fontSize: "10px",
+                fontWeight: 900,
+                letterSpacing: ".14em",
+                marginBottom: "6px",
+              }}
+            >
+              {service
+                ? "SERVICE ITEM"
+                : "FOOD ITEM"}
+            </div>
+
+            <h3
+              style={{
+                margin: 0,
+                color: "#fff",
+                fontSize: "18px",
+                lineHeight: 1.3,
+              }}
+            >
+              {item.name} ×{" "}
+              {item.quantity ??
+                item.qty ??
+                1}
+            </h3>
+
+            {!service &&
+              item.preference && (
+                <div
+                  style={{
+                    marginTop: "5px",
+                    color: "#858585",
+                    fontSize: "11px",
+                  }}
+                >
+                  {item.preference}
+                </div>
+              )}
           </div>
-          <strong>{item.status?.replaceAll("_", " ") || (service ? "WAITING" : "ORDERED")}</strong>
+
+          <div
+            style={{
+              textAlign: "right",
+              minWidth: "170px",
+            }}
+          >
+            <strong
+              style={{
+                display: "block",
+                color: "#f4c45f",
+                fontSize: "12px",
+                letterSpacing: ".06em",
+              }}
+            >
+              {statusLabel}
+            </strong>
+
+            <small
+              style={{
+                display: "block",
+                marginTop: "5px",
+                color: "#777",
+                fontSize: "10px",
+                lineHeight: 1.4,
+              }}
+            >
+              {getItemEstimateText(
+                item,
+                0
+              )}
+            </small>
+          </div>
         </div>
 
-        <div className={`tracking-line item-tracking-line steps-${steps.length}`}>
-          {steps.map((step, index) => (
+        <div
+          style={{
+            position: "relative",
+            padding:
+              "0 24px 4px",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "22px",
+              left: "9%",
+              right: "9%",
+              height: "3px",
+              borderRadius: "99px",
+              background:
+                "rgba(255,255,255,.08)",
+              overflow: "hidden",
+            }}
+          >
             <div
-              className={`tracking-step ${getStepStatus(item.status || (service ? "WAITING" : "ORDERED"), step.status) ? "completed" : ""}`}
-              key={step.status}
-            >
-              <div className="tracking-icon">{icons[index]}</div>
-              <h4>{step.title}</h4>
-              <p>{step.subtitle}</p>
-            </div>
-          ))}
+              style={{
+                width: `${progressPercent}%`,
+                height: "100%",
+                borderRadius: "99px",
+                background:
+                  "linear-gradient(90deg,#b87918,#d89a2b,#f4c45f)",
+                transition:
+                  "width .35s ease",
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "grid",
+              gridTemplateColumns:
+                `repeat(${steps.length}, minmax(0, 1fr))`,
+              gap: "10px",
+            }}
+          >
+            {steps.map(
+              (step, index) => {
+                const completed =
+                  index <=
+                  currentIndex;
+                const current =
+                  index ===
+                  currentIndex;
+
+                return (
+                  <div
+                    key={step.status}
+                    style={{
+                      display: "flex",
+                      flexDirection:
+                        "column",
+                      alignItems:
+                        "center",
+                      textAlign:
+                        "center",
+                      color:
+                        completed
+                          ? "#fff"
+                          : "#666",
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "44px",
+                        height: "44px",
+                        display: "grid",
+                        placeItems:
+                          "center",
+                        border:
+                          completed
+                            ? "2px solid #f4c45f"
+                            : "2px solid rgba(255,255,255,.12)",
+                        borderRadius:
+                          "50%",
+                        background:
+                          completed
+                            ? "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)"
+                            : "#171717",
+                        color:
+                          completed
+                            ? "#111"
+                            : "#626262",
+                        boxShadow:
+                          current
+                            ? "0 0 0 6px rgba(216,154,43,.08),0 0 26px rgba(244,196,95,.22)"
+                            : "0 5px 16px rgba(0,0,0,.28)",
+                      }}
+                    >
+                      {icons[index]}
+                    </div>
+
+                    <strong
+                      style={{
+                        marginTop: "8px",
+                        maxWidth:
+                          "150px",
+                        color:
+                          completed
+                            ? "#fff"
+                            : "#666",
+                        fontSize:
+                          "11px",
+                        lineHeight:
+                          1.25,
+                      }}
+                    >
+                      {step.title}
+                    </strong>
+
+                    <span
+                      style={{
+                        marginTop: "3px",
+                        color:
+                          completed
+                            ? "#909090"
+                            : "#505050",
+                        fontSize:
+                          "9px",
+                      }}
+                    >
+                      {step.subtitle}
+                    </span>
+                  </div>
+                );
+              }
+            )}
+          </div>
         </div>
       </div>
     );
@@ -810,42 +1136,6 @@ export default function Status() {
 
           </div>
 
-          {/* RIGHT-SIDE SUPPORT */}
-
-          <div className="glass-card support-card order-support-card">
-
-            <h2>
-              Need Assistance?
-            </h2>
-
-            <p>
-              Our restaurant team is
-              available to help you.
-            </p>
-
-            <button
-              className="support-btn"
-              onClick={() => {
-                if (waiterCooldownUntil > Date.now()) {
-                  return;
-                }
-                setShowWaiterModal(true);
-                setAssistanceMessage("");
-              }}
-              disabled={cooldownRemaining > 0}
-              style={{ opacity: cooldownRemaining > 0 ? 0.6 : 1 }}
-            >
-
-              <FaBell />
-
-              {cooldownRemaining > 0
-                ? `Waiter Called • ${Math.floor(cooldownRemaining / 60000)}:${String(Math.floor((cooldownRemaining % 60000) / 1000)).padStart(2, "0")}`
-                : "Call Waiter"}
-
-            </button>
-
-          </div>
-
         </div>
 
         {/* RIGHT PANEL */}
@@ -854,9 +1144,72 @@ export default function Status() {
 
           {/* ITEM-LEVEL TRACKING */}
 
-          <section className="tracking-card item-tracking-section">
-            <h2 className="item-tracking-title">LIVE ORDER TRACKING</h2>
-            {(order.items || []).map(renderItemTracker)}
+          <section
+            style={{
+              width: "100%",
+              padding: "28px",
+              border:
+                "1px solid rgba(216,154,43,.18)",
+              borderRadius: "24px",
+              background:
+                "linear-gradient(145deg,rgba(18,18,18,.97),rgba(8,8,8,.97))",
+              boxShadow:
+                "0 18px 50px rgba(0,0,0,.22)",
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent:
+                  "space-between",
+                gap: "20px",
+                marginBottom: "4px",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    display: "block",
+                    color: "#d89a2b",
+                    fontSize: "10px",
+                    fontWeight: 900,
+                    letterSpacing: ".16em",
+                  }}
+                >
+                  ITEM STATUS
+                </span>
+
+                <h2
+                  style={{
+                    margin:
+                      "5px 0 0",
+                    color: "#fff",
+                    fontSize: "24px",
+                    fontWeight: 900,
+                  }}
+                >
+                  ITEM-BY-ITEM TRACKING
+                </h2>
+              </div>
+
+              <span
+                style={{
+                  color: "#8be6a2",
+                  fontSize: "10px",
+                  fontWeight: 900,
+                  letterSpacing: ".12em",
+                }}
+              >
+                ● LIVE
+              </span>
+            </div>
+
+            <div>
+              {(order.items || [])
+                .map(renderItemTracker)}
+            </div>
           </section>
 
           {/* ETA CARDS */}

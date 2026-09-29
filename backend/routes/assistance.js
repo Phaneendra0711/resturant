@@ -82,39 +82,6 @@ const assistanceTimerPoints = (
   };
 };
 
-if (
-  timerPoints.points !== 0
-) {
-  await addCredits({
-    staffId,
-    staffName:
-      request.acceptedByName,
-    role: "WAITER",
-    points:
-      timerPoints.points,
-    reason:
-      timerPoints.reason,
-    assistanceId:
-      request._id,
-    elapsedSeconds:
-      timerPoints.elapsedSeconds,
-  });
-}
-
-/*
-   First 100 individual waiter tasks:
-   Assistance = +50
-*/
-
-await awardWaiterCompletionBonus({
-  staffId,
-  staffName:
-    request.acceptedByName,
-  assistanceId:
-    request._id,
-  taskType:
-    "ASSISTANCE",
-});
 
 /*
 ==================================================
@@ -183,7 +150,13 @@ router.post("/", async (req, res) => {
       });
     }
 
-    if (!safeTableNumber || !Array.from({ length: 30 }, (_, i) => String(i + 1)).includes(safeTableNumber)) {
+    if (
+      !safeTableNumber ||
+      !Array.from(
+        { length: 30 },
+        (_, i) => String(i + 1)
+      ).includes(safeTableNumber)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Table number must be between 1 and 30",
@@ -195,6 +168,27 @@ router.post("/", async (req, res) => {
         ? `Cash payment request for ₹${Number(grandTotal || 0).toFixed(0)}`
         : (message || "");
 
+    /*
+    ==================================================
+    CREATE REQUEST
+    ==================================================
+
+    IMPORTANT:
+
+    The existing AssistanceRequest schema may only
+    allow the original assistance fields.
+
+    Therefore the normal assistance document is
+    created first.
+
+    CASH_PAYMENT-specific fields are attached
+    afterward with validation disabled.
+
+    This prevents changes to the existing assistance
+    validation and waiter workflow.
+    ==================================================
+    */
+
     const request =
       await AssistanceRequest.create({
         customerName:
@@ -203,17 +197,8 @@ router.post("/", async (req, res) => {
         tableNumber:
           safeTableNumber,
 
-        type:
-          requestType === "CASH_PAYMENT" ? "CASH_PAYMENT" : "ASSISTANCE",
-
-        paymentType:
-          requestType === "CASH_PAYMENT" ? normalizedPaymentType : "CASH",
-
         message:
           cashMessage,
-
-        grandTotal:
-          Number(grandTotal || 0),
 
         status:
           "ACTIVE",
@@ -231,12 +216,57 @@ router.post("/", async (req, res) => {
           null,
       });
 
+    /*
+    ==================================================
+    CASH PAYMENT METADATA
+    ==================================================
+    */
+
+    if (requestType === "CASH_PAYMENT") {
+
+      await AssistanceRequest.updateOne(
+        {
+          _id:
+            request._id,
+        },
+
+        {
+          $set: {
+            type:
+              "CASH_PAYMENT",
+
+            paymentType:
+              normalizedPaymentType,
+
+            grandTotal:
+              Number(grandTotal || 0),
+          },
+        },
+
+        {
+          runValidators: false,
+          strict: false,
+        }
+      );
+
+      request.type =
+        "CASH_PAYMENT";
+
+      request.paymentType =
+        normalizedPaymentType;
+
+      request.grandTotal =
+        Number(grandTotal || 0);
+    }
+
 
     return res.status(201).json({
       success: true,
 
       message:
-        requestType === "CASH_PAYMENT" ? "Cash request created" : "Assistance request created",
+        requestType === "CASH_PAYMENT"
+          ? "Cash request created"
+          : "Assistance request created",
 
       request,
     });
@@ -598,18 +628,55 @@ router.patch(
         });
       }
 
-      const timerPoints = assistanceTimerPoints(request, now);
-      if (timerPoints.points !== 0) {
+      const timerPoints =
+        assistanceTimerPoints(
+          request,
+          now
+        );
+
+      if (
+        timerPoints.points !== 0
+      ) {
         await addCredits({
           staffId,
-          staffName: request.acceptedByName,
-          role: "WAITER",
-          points: timerPoints.points,
-          reason: timerPoints.reason,
-          assistanceId: request._id,
-          elapsedSeconds: timerPoints.elapsedSeconds,
+
+          staffName:
+            request.acceptedByName,
+
+          role:
+            "WAITER",
+
+          points:
+            timerPoints.points,
+
+          reason:
+            timerPoints.reason,
+
+          assistanceId:
+            request._id,
+
+          elapsedSeconds:
+            timerPoints.elapsedSeconds,
         });
       }
+
+      /*
+         First 100 individual waiter tasks:
+         Assistance = +50
+      */
+
+      await awardWaiterCompletionBonus({
+        staffId,
+
+        staffName:
+          request.acceptedByName,
+
+        assistanceId:
+          request._id,
+
+        taskType:
+          "ASSISTANCE",
+      });
 
 
       console.log(
@@ -691,7 +758,8 @@ async function getActiveServiceTasks(
     );
 
 
-  const activeGroups = new Set();
+  const activeGroups =
+    new Set();
 
 
   orders.forEach(
@@ -709,14 +777,20 @@ async function getActiveServiceTasks(
             ) ===
               String(staffId)
           ) {
-            const preference = String(
-              item.servicePreference || item.serviceGroup || ""
-            ).toUpperCase();
+
+            const preference =
+              String(
+                item.servicePreference ||
+                item.serviceGroup ||
+                ""
+              ).toUpperCase();
 
             const groupId =
-              item.serviceType === "SERVICE" && preference === "NOW"
+              item.serviceType === "SERVICE" &&
+              preference === "NOW"
                 ? `SERVICE_${item._id}`
-                : item.waiterTaskGroup || item._id;
+                : item.waiterTaskGroup ||
+                  item._id;
 
             activeGroups.add(
               `${order._id}:${groupId}`

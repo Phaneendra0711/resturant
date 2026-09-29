@@ -338,8 +338,6 @@ const normalizeCart = (
    CART COMPONENT
    ========================================================= */
 
-const CASH_REQUEST_COOLDOWN_MS = 10 * 60 * 1000;
-
 export default function Cart() {
 
   const navigate =
@@ -388,31 +386,9 @@ export default function Cart() {
     setUpdated,
   ] = useState(false);
 
-  const [showCashConfirm, setShowCashConfirm] = useState(false);
   const [showOptionalInputs, setShowOptionalInputs] = useState(false);
   const [showChefDescription, setShowChefDescription] = useState(false);
   const [showWaiterDescription, setShowWaiterDescription] = useState(false);
-  const [cashRequestCooldownUntil, setCashRequestCooldownUntil] = useState(() => {
-    const saved = Number(localStorage.getItem("cashRequestCooldownUntil") || 0);
-    return Number.isFinite(saved) ? saved : 0;
-  });
-
-  const isCashCooldownActive = Date.now() < cashRequestCooldownUntil;
-  const cashCooldownRemaining =
-    isCashCooldownActive ? Math.max(0, Math.ceil((cashRequestCooldownUntil - Date.now()) / 1000)) : 0;
-
-  useEffect(() => {
-    if (!isCashCooldownActive) return undefined;
-
-    const timer = setInterval(() => {
-      if (Date.now() >= cashRequestCooldownUntil) {
-        setCashRequestCooldownUntil(0);
-        localStorage.removeItem("cashRequestCooldownUntil");
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [cashRequestCooldownUntil, isCashCooldownActive]);
 
 
   /* =========================================================
@@ -998,11 +974,11 @@ export default function Cart() {
 
 
   /* =========================================================
-     PLACE ORDER
+     PROCEED TO BILLING
      ========================================================= */
 
-  const handlePlaceOrder =
-    async () => {
+  const handleProceedToBilling =
+    () => {
 
       const trimmedName =
         customerName.trim();
@@ -1013,7 +989,20 @@ export default function Cart() {
       ) {
 
         alert(
-          "Please enter your name before placing the order."
+          "Please enter your name before proceeding to billing."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        !tableNumber
+      ) {
+
+        alert(
+          "Please select your table number before proceeding to billing."
         );
 
         return;
@@ -1064,11 +1053,24 @@ export default function Cart() {
       ];
 
 
-      const orderData = {
+      /*
+       * Keep all checkout information in
+       * sessionStorage temporarily.
+       *
+       * IMPORTANT:
+       * No order is created here.
+       *
+       * Payment.jsx creates the actual
+       * MongoDB order after payment.
+       */
+
+      const checkoutData = {
 
         customerName:
           trimmedName,
 
+        tableNumber:
+          String(tableNumber),
 
         items:
           finalItems.map(
@@ -1082,37 +1084,25 @@ export default function Cart() {
 
               return {
 
-                name:
-                  item.name,
+                ...item,
 
-                category:
-                  item.category || "",
-
-                price:
-                  Number(
-                    item.price
-                  ) || 0,
-
-                quantity:
+                qty:
                   Number(
                     item.qty
                   ) || 1,
 
-                image:
-                  item.image || "",
-
                 serviceType:
-                  service ? "SERVICE" : "FOOD",
+                  service
+                    ? "SERVICE"
+                    : "FOOD",
 
                 servicePreference:
                   service
-                    ? (item.servicePreference || "NOW")
+                    ? (
+                      item.servicePreference ||
+                      "NOW"
+                    )
                     : "",
-
-
-                /*
-                 * Food preference
-                 */
 
                 preference:
                   service
@@ -1136,34 +1126,32 @@ export default function Cart() {
             }
           ),
 
+        subtotal:
+          foodSubtotal,
 
-        /*
-         * FOOD + DRINKS + GST
-         *
-         * No service charge.
-         */
+        foodSubtotal:
+          foodSubtotal,
 
-        totalAmount:
+        serviceSubtotal:
+          serviceSubtotal,
+
+        gst:
+          gst,
+
+        serviceCharge:
+          0,
+
+        total:
           payableTotal,
 
-
-        paymentStatus:
-          "PAID",
-
-        paymentMethod:
-          "DEMO",
-
-        amountPaid:
-          payableTotal,
-
-        paidAt:
-          new Date(),
-
-        tableNumber:
-          tableNumber,
+        originalTotal:
+          total,
 
         couponCode:
           couponCode.trim(),
+
+        couponDiscount:
+          couponDiscount,
 
         chefDescription:
           chefDescription.trim(),
@@ -1174,110 +1162,17 @@ export default function Cart() {
       };
 
 
-      try {
-
-        const response =
-          await fetch(
-            "/api/orders",
-            {
-              method:
-                "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body:
-                JSON.stringify(
-                  orderData
-                ),
-            }
-          );
+      sessionStorage.setItem(
+        "pendingCheckout",
+        JSON.stringify(
+          checkoutData
+        )
+      );
 
 
-        const data =
-          await response.json();
-
-
-        if (
-          !response.ok
-        ) {
-
-          throw new Error(
-            data.message ||
-            "Failed to create order"
-          );
-
-        }
-
-
-        const mongoOrder =
-          data.order;
-
-
-        localStorage.setItem(
-          "activeOrderId",
-          mongoOrder._id
-        );
-
-
-        const existingOrders =
-          JSON.parse(
-            localStorage.getItem(
-              "orders"
-            )
-          ) || [];
-
-
-        existingOrders.push(
-          mongoOrder
-        );
-
-
-        localStorage.setItem(
-          "orders",
-          JSON.stringify(
-            existingOrders
-          )
-        );
-
-
-        localStorage.removeItem(
-          "cart"
-        );
-
-
-        setCartItems(
-          []
-        );
-
-
-        alert(
-          "Order Placed Successfully"
-        );
-
-
-        navigate(
-          "/status"
-        );
-
-      } catch (
-      error
-      ) {
-
-        console.error(
-          "ORDER ERROR:",
-          error
-        );
-
-
-        alert(
-          error.message ||
-          "Order could not be saved. Please try again."
-        );
-
-      }
+      navigate(
+        "/payment"
+      );
 
     };
 
@@ -2380,133 +2275,21 @@ export default function Cart() {
               </div>
 
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
-                <button
-                  className="checkout-btn"
-                  onClick={() => {
-                    if (!customerName.trim()) {
-                      alert("Please enter your name before sending a cash request.");
-                      return;
-                    }
+              <button
+                className="checkout-btn"
+                onClick={
+                  handleProceedToBilling
+                }
+                style={{ marginTop: "12px", width: "100%" }}
+              >
 
-                    if (!tableNumber) {
-                      alert("Please select your table number before sending a cash request.");
-                      return;
-                    }
+                <span>
+                  PROCEED TO BILLING
+                </span>
 
-                    if (isCashCooldownActive) {
-                      const remainingMinutes = Math.ceil(cashCooldownRemaining / 60);
-                      alert(`Please wait ${remainingMinutes} minute(s) before sending another cash request.`);
-                      return;
-                    }
+                <FaArrowRight />
 
-                    setShowCashConfirm(true);
-                  }}
-                  style={{
-                    background: "#f4c45f",
-                    color: "#111",
-                    opacity: isCashCooldownActive ? 0.7 : 1,
-                    width: "100%",
-                  }}
-                  disabled={isCashCooldownActive}
-                >
-                  <span>
-                    {isCashCooldownActive
-                      ? `HARD CASH (${Math.ceil(cashCooldownRemaining / 60)}m)`
-                      : "HARD CASH"}
-                  </span>
-                </button>
-
-                <button
-                  className="checkout-btn"
-                  onClick={
-                    handlePlaceOrder
-                  }
-                  style={{ width: "100%" }}
-                >
-
-                  <span>
-                    PROCEED TO BILLING
-                  </span>
-
-                  <FaArrowRight />
-
-                </button>
-              </div>
-
-              {showCashConfirm && (
-                <div
-                  style={{
-                    marginTop: "12px",
-                    padding: "14px",
-                    borderRadius: "12px",
-                    background: "rgba(244,196,95,0.08)",
-                    border: "1px solid rgba(244,196,95,0.4)",
-                    color: "#f4f4f4",
-                  }}
-                >
-                  <p style={{ margin: "0 0 12px", fontWeight: 700 }}>
-                    Send hard cash request for ₹{payableTotal.toFixed(0)} for {customerName.trim()} at table {tableNumber}?
-                  </p>
-
-                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-                    <button
-                      className="checkout-btn"
-                      onClick={() => setShowCashConfirm(false)}
-                      style={{
-                        flex: 1,
-                        background: "#2a2a2a",
-                        color: "#f4f4f4",
-                      }}
-                    >
-                      CANCEL
-                    </button>
-
-                    <button
-                      className="checkout-btn"
-                      onClick={() => {
-                        fetch("/api/assistance", {
-                          method: "POST",
-                          headers: {
-                            "Content-Type": "application/json",
-                          },
-                          body: JSON.stringify({
-                            customerName: customerName.trim(),
-                            tableNumber: String(tableNumber),
-                            type: "CASH_PAYMENT",
-                            paymentType: "CASH",
-                            grandTotal: Number(payableTotal.toFixed(0)),
-                            message: `Cash payment request for ₹${payableTotal.toFixed(0)}`,
-                          }),
-                        })
-                          .then(async (response) => {
-                            const data = await response.json();
-                            if (!response.ok) {
-                              throw new Error(data.message || "Unable to send cash request");
-                            }
-
-                            const nextCooldown = Date.now() + CASH_REQUEST_COOLDOWN_MS;
-                            setCashRequestCooldownUntil(nextCooldown);
-                            localStorage.setItem("cashRequestCooldownUntil", String(nextCooldown));
-                            setShowCashConfirm(false);
-                            alert("Cash request sent to the waiter.");
-                          })
-                          .catch((error) => {
-                            console.error("CASH REQUEST ERROR:", error);
-                            alert(error.message || "Unable to send cash request.");
-                          });
-                      }}
-                      style={{
-                        flex: 1,
-                        background: "#f4c45f",
-                        color: "#111",
-                      }}
-                    >
-                      OK
-                    </button>
-                  </div>
-                </div>
-              )}
+              </button>
 
             </div>
 

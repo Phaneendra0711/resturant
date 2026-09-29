@@ -41,34 +41,28 @@ export default function Home() {
   });
 
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
-
-  useEffect(() => {
-    const updateCooldown = () => {
-      const remaining = Math.max(
-        0,
-        waiterCooldownUntil - Date.now()
-      );
-
-      setCooldownRemaining(remaining);
-
-      if (remaining <= 0 && waiterCooldownUntil > 0) {
-        localStorage.removeItem("waiterCooldownUntil");
-        setWaiterCooldownUntil(0);
-      }
-    };
-
-    updateCooldown();
-
-    const timer = setInterval(updateCooldown, 1000);
-
-    return () => clearInterval(timer);
-  }, [waiterCooldownUntil]);
-
   const requestWaiter = async () => {
-    if (waiterCooldownUntil > Date.now()) {
-      return;
-    }
+    useEffect(() => {
+      const updateCooldown = () => {
+        const remaining = Math.max(
+          0,
+          waiterCooldownUntil - Date.now()
+        );
 
+        setCooldownRemaining(remaining);
+
+        if (remaining <= 0 && waiterCooldownUntil > 0) {
+          localStorage.removeItem("waiterCooldownUntil");
+          setWaiterCooldownUntil(0);
+        }
+      };
+
+      updateCooldown();
+
+      const timer = setInterval(updateCooldown, 1000);
+
+      return () => clearInterval(timer);
+    }, [waiterCooldownUntil]);
     if (!customerName.trim()) {
       setAssistanceMessage("Please enter your name.");
       return;
@@ -105,16 +99,6 @@ export default function Home() {
       setAssistanceMessage(
         "Waiter has been notified. Please wait a moment."
       );
-
-      const cooldownUntil =
-        Date.now() + 5 * 60 * 1000;
-
-      localStorage.setItem(
-        "waiterCooldownUntil",
-        String(cooldownUntil)
-      );
-
-      setWaiterCooldownUntil(cooldownUntil);
 
       setTimeout(() => {
         setShowWaiterModal(false);
@@ -321,61 +305,6 @@ export default function Home() {
               alignItems: "center",
             }}
           >
-
-            {/* CALL WAITER */}
-
-            <button
-              onClick={() => {
-                if (waiterCooldownUntil > Date.now()) {
-                  return;
-                }
-
-                setShowWaiterModal(true);
-                setAssistanceMessage("");
-              }}
-              style={{
-                border:
-                  "2px solid rgba(216,154,43,.8)",
-                borderRadius: "14px",
-                padding: "15px 20px",
-                display: "flex",
-                gap: "10px",
-                alignItems: "center",
-                justifyContent: "center",
-                background:
-                  "linear-gradient(135deg,#b87918,#d89a2b,#f4c45f)",
-                color: "#111",
-                cursor:
-                  cooldownRemaining > 0
-                    ? "not-allowed"
-                    : "pointer",
-                opacity:
-                  cooldownRemaining > 0
-                    ? 0.55
-                    : 1,
-                fontWeight: "800",
-                fontFamily: "Georgia, serif",
-                fontSize: "15px",
-                boxShadow:
-                  "0 0 18px rgba(216,154,43,.25)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <FaBell />
-
-              <span>
-                {cooldownRemaining > 0
-                  ? `WAITER CALLED • ${Math.floor(
-                    cooldownRemaining / 60000
-                  )}:${String(
-                    Math.floor(
-                      (cooldownRemaining % 60000) / 1000
-                    )
-                  ).padStart(2, "0")}`
-                  : "CALL WAITER"}
-              </span>
-            </button>
-
 
             {/* CART */}
 

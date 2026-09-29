@@ -2,6 +2,7 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  useLocation,
 } from "react-router-dom";
 
 import MyOrders from "./MyOrders";
@@ -12,6 +13,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Landing from "./Landing";
 import Home from "./Home";
 import Cart from "./Cart";
+import Payment from "./Payment";
 import Status from "./Status";
 
 // Menu pages
@@ -33,6 +35,31 @@ import Waiter from "./Waiter";
 import Admin from "./Admin";
 import AdminPerformance from "./AdminPerformance";
 import ManageStaff from "./ManageStaff";
+import CustomerCallWaiter from "./CustomerCallWaiter";
+
+function CustomerPanel() {
+  const location = useLocation();
+
+  const customerPaths = new Set([
+    "/home",
+    "/cart",
+    "/my-orders",
+    "/status",
+    "/payment",
+    "/starters",
+    "/maincourse",
+    "/pizza",
+    "/burger",
+    "/beverages",
+    "/salads",
+    "/desserts",
+    "/icecreams",
+  ]);
+
+  const isCustomerPage = customerPaths.has(location.pathname);
+
+  return isCustomerPage ? <CustomerCallWaiter /> : null;
+}
 
 function App() {
   return (
@@ -45,6 +72,8 @@ function App() {
         newestOnTop
         theme="dark"
       />
+
+      <CustomerPanel />
 
       <Routes>
 
@@ -122,6 +151,12 @@ function App() {
         <Route
           path="/cart"
           element={<Cart />}
+        />
+
+        {/* PAYMENT */}
+        <Route
+          path="/payment"
+          element={<Payment />}
         />
 
         {/* =========================
