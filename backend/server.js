@@ -1,6 +1,5 @@
 import express from "express";
 import mongoose from "mongoose";
-import cors from "cors";
 import dotenv from "dotenv";
 
 import orderRoutes from "./routes/orders.js";
@@ -22,21 +21,36 @@ const app = express();
    CORS
 ========================= */
 
-const FRONTEND_URL = "https://restaurant-1-t48q.onrender.com";
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://restaurant-1-t48q.onrender.com",
+];
 
-const corsOptions = {
-  origin: FRONTEND_URL,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-app.use(cors(corsOptions));
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization"
+    );
+    res.setHeader("Vary", "Origin");
+  }
 
-/*
-  Explicitly handle browser preflight requests.
-*/
-app.options(/.*/, cors(corsOptions));
+  if (req.method === "OPTIONS") {
+    console.log("CORS preflight:", origin, req.path);
+
+    return res.status(204).end();
+  }
+
+  next();
+});
 
 /* =========================
    BODY PARSER
