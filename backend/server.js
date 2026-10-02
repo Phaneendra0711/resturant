@@ -23,7 +23,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://restaurant-1-t48q.onrender.com",
+  "https://resturant-1-t48q.onrender.com",
 ];
 
 app.use((req, res, next) => {
