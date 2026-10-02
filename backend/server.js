@@ -27,26 +27,46 @@ const allowedOrigins = [
   "https://restaurant-1-t48q.onrender.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests without an Origin header
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      console.log("Blocked CORS origin:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+    console.log("Blocked CORS origin:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+
+  credentials: true,
+
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
+
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
+app.options(/.*/, cors(corsOptions));
+
+/* =========================
+   BODY PARSER
+========================= */
 
 app.use(express.json());
 
@@ -98,8 +118,6 @@ mongoose
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
     socketTimeoutMS: 45000,
-
-    // Helps avoid IPv6/network routing problems
     family: 4,
   })
   .then(() => {
