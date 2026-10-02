@@ -36,7 +36,7 @@ app.use(cors(corsOptions));
 /*
   Explicitly handle browser preflight requests.
 */
-app.options("*", cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 /* =========================
    BODY PARSER
